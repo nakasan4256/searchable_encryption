@@ -278,7 +278,7 @@ void Me_mul_1(EC_POINT *R, const EC_POINT *P,const BIGNUM *n,const Me_DATA me_da
   int i,len;
   len=BN_num_bits(n);
   EC_POINT_copy(Y,P);
-  for(i=1;i<len;i++){
+  for(i=len-2;i>=0;i--){
     EC_POINT_add(me_data->ec,ZY,me_data->Z,Y,ctx);
     Me_Z(Y,ZY,Y,me_data,ctx);
     if(BN_is_bit_set(n,i)){
