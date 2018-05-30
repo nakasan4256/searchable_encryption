@@ -398,16 +398,16 @@ int main(void){
   Public_Key public_key;
   public_key_init(public_key,me_data);
 
-  //BN_rand_range(k,me_data->order);
-  BN_set_word(k,11);
+  BN_rand_range(k,me_data->order);
+  //BN_set_word(k,11);
   EC_POINT_mul(me_data->ec,Z,k,NULL,NULL,ctx);
 
   Me_data_set_Zk(me_data,Z,k);
   me_data->Z_sign=Sign(me_data,Z,ctx);
   P=EC_GROUP_get0_generator(me_data->ec);
 
-  //private_key_create(private_key,me_data);
-  BN_set_word(private_key,100);
+  private_key_create(private_key,me_data);
+  //BN_set_word(private_key,100);
   printf("private_key : ");
   BN_print_fp(stdout,private_key);
   puts("");
