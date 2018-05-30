@@ -132,13 +132,13 @@ int Sign(const Me_DATA me_data,const EC_POINT *P,BN_CTX *ctx){
   y0=BN_new();
   EC_POINT_get_affine_coordinates_GFp(me_data->ec,P,NULL,y0,ctx);
 
-  int k=BN_kronecker(y0,me_data->p,ctx);
-
+  //int k=BN_kronecker(y0,me_data->p,ctx);
+  int k=BN_is_bit_set(y0,0);
   BN_clear_free(y0);
   return k;
 }
 
-void Me(EC_POINT *R,const EC_POINT *P,const EC_POINT *Q,const Me_DATA me_data,BN_CTX *ctx){
+int Me(EC_POINT *R,const EC_POINT *P,const EC_POINT *Q,const Me_DATA me_data,BN_CTX *ctx){
   //BIGNUM *k_1;
   //k_1=BN_new();
   //BN_copy(k_1,me_data->k);
@@ -158,13 +158,14 @@ void Me(EC_POINT *R,const EC_POINT *P,const EC_POINT *Q,const Me_DATA me_data,BN
 
   //start=omp_get_wtime();
   int sign=Sign(me_data,AA,ctx);
+  printf("sign : %d\n",sign);
   //end=omp_get_wtime();
   //printf("sign %f seconds\n",end-start);
 
   //start=omp_get_wtime();
   if(EC_POINT_is_at_infinity(me_data->ec,AA)){
     EC_POINT_copy(R,P);
-  }else if(sign==-1){
+  }else if(sign==0){
     //EC_POINT_mul(me_data->ec,kQ,NULL,Q,me_data->k,ctx);
     EC_POINT_dbl(me_data->ec,AA,Q,ctx);
     //EC_POINT_mul(me_data->ec,kP,NULL,P,k_1,ctx);
@@ -188,6 +189,7 @@ void Me(EC_POINT *R,const EC_POINT *P,const EC_POINT *Q,const Me_DATA me_data,BN
   //BN_clear_free(k_1);
   EC_POINT_clear_free(AA);
   EC_POINT_clear_free(minus);
+  return sign;
 }
 
 void Me_Z(EC_POINT *R,const EC_POINT *P,const EC_POINT *Q,const Me_DATA me_data,BN_CTX *ctx){
@@ -209,7 +211,7 @@ void Me_Z(EC_POINT *R,const EC_POINT *P,const EC_POINT *Q,const Me_DATA me_data,
   //start=omp_get_wtime();
   if(EC_POINT_is_at_infinity(me_data->ec,me_data->Z)){
     EC_POINT_copy(R,P);
-  }else if(me_data->Z_sign==-1){
+  }else if(me_data->Z_sign==0){
     //EC_POINT_mul(me_data->ec,kQ,NULL,Q,me_data->k,ctx);
     EC_POINT_dbl(me_data->ec,dbl,Q,ctx);
     //EC_POINT_mul(me_data->ec,kP,NULL,P,k_1,ctx);
@@ -217,7 +219,7 @@ void Me_Z(EC_POINT *R,const EC_POINT *P,const EC_POINT *Q,const Me_DATA me_data,
     EC_POINT_copy(minus,P);
     EC_POINT_invert(me_data->ec,minus,ctx);
     EC_POINT_add(me_data->ec,R,dbl,minus,ctx);
-  }else if(me_data->Z_sign==1){
+  }else if(me_data->Z_sign){
     //EC_POINT_mul(me_data->ec,kP,NULL,P,me_data->k,ctx);
     EC_POINT_dbl(me_data->ec,dbl,P,ctx);
     //EC_POINT_mul(me_data->ec,kQ,NULL,Q,k_1,ctx);
@@ -276,16 +278,24 @@ void Me_mul_1(EC_POINT *R, const EC_POINT *P,const BIGNUM *n,const Me_DATA me_da
   printf("aa : %d\n",aa);
   */
   int i,len;
+  int minus,plus;
+  minus=0;
+  plus=0;
   len=BN_num_bits(n);
   EC_POINT_copy(Y,P);
-  for(i=1;i<len;i++){
+  for(i=len-2;i>=0;i--){
     EC_POINT_add(me_data->ec,ZY,me_data->Z,Y,ctx);
     Me_Z(Y,ZY,Y,me_data,ctx);
     if(BN_is_bit_set(n,i)){
-      Me(Y,Y,P,me_data,ctx);
+      if(Me(Y,Y,P,me_data,ctx)==0){
+        minus++;
+      }else{
+        plus++;
+      }
     }
   }
   EC_POINT_copy(R,Y);
+  printf("-1 : %d\n 1 : %d\n",minus,plus);
 
   EC_POINT_clear_free(Y);
   EC_POINT_clear_free(ZY);
