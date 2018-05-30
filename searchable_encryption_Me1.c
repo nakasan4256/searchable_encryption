@@ -128,13 +128,30 @@ int new_sign(const Me_DATA me_data,const EC_POINT *P,BN_CTX *ctx){
 */
 
 int Sign(const Me_DATA me_data,const EC_POINT *P,BN_CTX *ctx){
-  BIGNUM *y0;
-  y0=BN_new();
-  EC_POINT_get_affine_coordinates_GFp(me_data->ec,P,NULL,y0,ctx);
+  double start,end;
+  start=omp_get_wtime();
+  BIGNUM *x0;
+  x0=BN_new();
 
-  int k=BN_kronecker(y0,me_data->p,ctx);
+  end=omp_get_wtime();
+  printf("zyunbi %f seconds\n",end-start);
 
-  BN_clear_free(y0);
+  start=omp_get_wtime();
+  EC_POINT_get_affine_coordinates_GFp(me_data->ec,P,x0,NULL,ctx);
+
+  end=omp_get_wtime();
+  printf("getpoint %f seconds\n",end-start);
+
+  start=omp_get_wtime();
+  int k=BN_kronecker(x0,me_data->p,ctx);
+
+  end=omp_get_wtime();
+  printf("kron %f seconds\n",end-start);
+
+  start=omp_get_wtime();
+  BN_clear_free(x0);
+  end=omp_get_wtime();
+  printf("clear %f seconds\n",end-start);
   return k;
 }
 
