@@ -132,8 +132,8 @@ int Sign(const Me_DATA me_data,const EC_POINT *P,BN_CTX *ctx){
   y0=BN_new();
   EC_POINT_get_affine_coordinates_GFp(me_data->ec,P,NULL,y0,ctx);
 
-  int k=BN_kronecker(y0,me_data->p,ctx);
-
+  //int k=BN_kronecker(y0,me_data->p,ctx);
+  int k=BN_is_bit_set(y0,0);
   BN_clear_free(y0);
   return k;
 }
