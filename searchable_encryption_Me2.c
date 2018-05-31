@@ -398,6 +398,14 @@ void test(const Peks peks,const Trapdoor trapdoor,const Me_DATA me_data){
 }
 
 int main(void){
+  /*
+  double start,end;
+  start=omp_get_wtime();
+  for(i=0;i<5000;i++)
+    keyword_encrypt(peks[0],keyword[0],public_key,me_data);
+  end=omp_get_wtime();
+  printf("encrypt %f seconds\n",(end-start)/5000);
+  */
   BN_CTX *ctx;
   ctx=BN_CTX_new();
 
@@ -441,7 +449,6 @@ int main(void){
 
   int i,n=5;
   unsigned char keyword[n][32];
-  double start,end;
   Peks peks[n];
   //for(i=0;i<11;i++)
   //  printf("BN_is_bit_set : %d\n",BN_is_bit_set(k,i));
