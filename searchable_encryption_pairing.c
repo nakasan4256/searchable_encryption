@@ -132,7 +132,6 @@ int main(void){
   point_print(hash);
   */
 
-
   int n=5;
   char keyword[n][128];
 

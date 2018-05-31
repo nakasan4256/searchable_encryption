@@ -375,7 +375,7 @@ void keyword_encrypt(Peks peks,const unsigned char *keyword,const Public_Key pub
   BN_CTX_free(ctx);
 }
 
-void test(const Peks peks,const Trapdoor trapdoor,const Me_DATA me_data){
+int test(const Peks peks,const Trapdoor trapdoor,const Me_DATA me_data){
   BN_CTX *ctx;
   ctx=BN_CTX_new();
   EC_POINT *check;
@@ -386,15 +386,17 @@ void test(const Peks peks,const Trapdoor trapdoor,const Me_DATA me_data){
   EC_POINT_add(me_data->ec,check,peks->B,check,ctx);
   Me(check,trapdoor->Ha,check,me_data,ctx);
   EC_POINT_add(me_data->ec,check,check,peks->A,ctx);
-
-  if(EC_POINT_cmp(me_data->ec,check,peks->B,NULL)){
+  /*
+  if(EC_POINT_cmp(me_data->ec,check,peks->B,ctx)){
     printf("---test fail!!---\n");
   }else{
     printf("---test success!!---\n");
   }
-
+  */
+  int k=EC_POINT_cmp(me_data->ec,check,peks->B,ctx);
   EC_POINT_clear_free(check);
   BN_CTX_free(ctx);
+  return k;
 }
 
 int main(void){
@@ -483,8 +485,13 @@ int main(void){
     for(i=0;i<n;i++){
       printf("keyword[%d] : %s ",i,keyword[i]);
       start=omp_get_wtime();
-      test(peks[i],trapdoor,me_data);
-      end=omp_get_wtime();
+      if(test(peks[i],trapdoor,me_data)){
+        end=omp_get_wtime();
+        printf("---test fail!!---\n");
+      }else{
+        end=omp_get_wtime();
+        printf("---test success!!---\n");
+      }
       printf("test %f seconds\n",end-start);
     }
   }
