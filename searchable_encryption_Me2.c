@@ -398,9 +398,9 @@ void test(const Peks peks,const Trapdoor trapdoor,const Me_DATA me_data){
 }
 
 int main(void){
-  /*
+  int i,n=5;
   double start,end;
-  start=omp_get_wtime();
+  /*start=omp_get_wtime();
   for(i=0;i<5000;i++)
     keyword_encrypt(peks[0],keyword[0],public_key,me_data);
   end=omp_get_wtime();
@@ -447,7 +447,7 @@ int main(void){
   EC_POINT_print(public_key->Q,me_data);
   printf("------------------------------------\n");
 
-  int i,n=5;
+
   unsigned char keyword[n][32];
   Peks peks[n];
   //for(i=0;i<11;i++)
@@ -475,7 +475,7 @@ int main(void){
     start=omp_get_wtime();
     trapdoor_create(trapdoor,private_key,word,me_data);
     end=omp_get_wtime();
-    printf("trapdoor %f seconds\n",end-start);
+    printf("trapdoor %f seconds\n",(end-start));
     printf("trapdoor : ");
     EC_POINT_print(trapdoor->H,me_data);
     printf("           ");
