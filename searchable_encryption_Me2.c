@@ -136,20 +136,12 @@ int new_sign(const Me_DATA me_data,const EC_POINT *P,BN_CTX *ctx){
 */
 
 int Sign(const Me_DATA me_data,const EC_POINT *P,BN_CTX *ctx){
-<<<<<<< HEAD
-  BIGNUM *y0;
-  BN_CTX_start(ctx);
-  y0=BN_CTX_get(ctx);
-  EC_POINT_get_affine_coordinates_GFp(me_data->ec,P,NULL,y0,ctx);
-
-=======
   BIGNUM *y0,*z0;
   BN_CTX_start(ctx);
   y0=BN_CTX_get(ctx);
   z0=BN_CTX_get(ctx);
   EC_POINT_get_Jprojective_coordinates_GFp(me_data->ec,P,NULL,y0,z0,ctx);
   BN_mod_mul(y0,y0,z0,me_data->p,ctx);
->>>>>>> 30b15f67a217bd315ed70d04a74283c132693a5d
   int k=BN_kronecker(y0,me_data->p,ctx);
   //int k=BN_is_bit_set(y0,0);
   BN_CTX_end(ctx);
