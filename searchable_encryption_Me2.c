@@ -451,6 +451,12 @@ int main(void){
   EC_POINT_print(public_key->Q,me_data);
   printf("------------------------------------\n");
 
+  start=omp_get_wtime();
+  for(i=0;i<5000;i++)
+    public_key_create(public_key,private_key,P,me_data);
+  end=omp_get_wtime();
+  printf("public %f seconds\n",(end-start)/5000);
+
 
   unsigned char keyword[n][32];
   Peks peks[n];
@@ -470,6 +476,11 @@ int main(void){
     printf("              B ");
     EC_POINT_print(peks[i]->B,me_data);
   }
+  start=omp_get_wtime();
+  for(i=0;i<5000;i++)
+    keyword_encrypt(peks[0],keyword[0],public_key,me_data);
+  end=omp_get_wtime();
+  printf("peks %f seconds\n",(end-start)/5000);
 
 
   while(1){
@@ -484,6 +495,13 @@ int main(void){
     EC_POINT_print(trapdoor->H,me_data);
     printf("           ");
     EC_POINT_print(trapdoor->Ha,me_data);
+
+    start=omp_get_wtime();
+    for(i=0;i<5000;i++)
+      trapdoor_create(trapdoor,private_key,word,me_data);
+    end=omp_get_wtime();
+    printf("trapdoor %f seconds\n",(end-start)/5000);
+
     for(i=0;i<n;i++){
       printf("keyword[%d] : %s ",i,keyword[i]);
       start=omp_get_wtime();
@@ -496,6 +514,11 @@ int main(void){
       }
       printf("test %f seconds\n",end-start);
     }
+    start=omp_get_wtime();
+    for(i=0;i<5000;i++)
+      test(peks[0],trapdoor,me_data);
+    end=omp_get_wtime();
+    printf("test %f seconds\n",(end-start)/5000);
   }
 
   /*
