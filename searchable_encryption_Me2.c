@@ -1,5 +1,5 @@
 //secp192k1 711 secp256k1 714 openssl/obj_mac.h
-//gcc -fopenmp -O2 -o Me1 searchable_encryption_Me1.c -L/usr/local/lib -I/usr/local/include -lssl -lcrypto
+//gcc -fopenmp -O2 -o Me2 searchable_encryption_Me2.c -L/usr/local/lib -I/usr/local/include -lssl -lcrypto
 
 #include<stdio.h>
 #include<string.h>
