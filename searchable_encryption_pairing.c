@@ -89,8 +89,9 @@ int test(Peks peks,EC_POINT trapdoor,EC_PAIRING pair){
 }
 
 int main(void){
-  /*
+
   double start,end;
+  /*
   start=omp_get_wtime();
   for(i=0;i<5000;i++)
     private_key_create(private_key,limit);
@@ -123,6 +124,12 @@ int main(void){
   point_print(public_key->Q);
   printf("-------------------------------------\n");
 
+  start=omp_get_wtime();
+  for(i=0;i<5000;i++)
+    public_key_create(public_key,private_key,P);
+  end=omp_get_wtime();
+  printf("public : %f seconds\n",(end-start)/5000);
+
   /*
   EC_POINT hash;
   point_init(hash,ec);
@@ -143,6 +150,12 @@ int main(void){
     keyword_encrypt(peks[i],keyword[i],public_key,pair,limit);
   }
 
+  start=omp_get_wtime();
+  for(i=0;i<5000;i++)
+    keyword_encrypt(peks[0],keyword[0],public_key,pair,limit);
+  end=omp_get_wtime();
+  printf("encrypt : %f seconds\n",(end-start)/5000);
+
   EC_POINT trapdoor;
   point_init(trapdoor,pair->g1);
 
@@ -153,6 +166,12 @@ int main(void){
 
     trapdoor_create(trapdoor,private_key,word,pair);
 
+    start=omp_get_wtime();
+    for(i=0;i<5000;i++)
+      trapdoor_create(trapdoor,private_key,word,pair);
+    end=omp_get_wtime();
+    printf("trapdoor : %f seconds\n",(end-start)/5000);
+
     for(i=0;i<n;i++){
       if(test(peks[i],trapdoor,pair)==0){
         printf("keyword[%d] : %s Good!\n",i,keyword[i]);
@@ -160,6 +179,11 @@ int main(void){
         printf("keyword[%d] : %s bad!\n",i,keyword[i]);
       }
     }
+    start=omp_get_wtime();
+    for(i=0;i<5000;i++)
+      test(peks[0],trapdoor,pair);
+    end=omp_get_wtime();
+    printf("test : %f seconds\n",(end-start)/5000);
   }
 /*
   EC_POINT trapdoor;
