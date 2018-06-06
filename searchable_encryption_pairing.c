@@ -176,7 +176,7 @@ int main(void){
       if(test(peks[i],trapdoor,pair)==0){
         printf("keyword[%d] : %s Good!\n",i,keyword[i]);
       }else{
-        printf("keyword[%d] : %s bad!\n",i,keyword[i]);
+        printf("keyword[%d] : %s bad!\n",i,keyword[i]);//１３４
       }
     }
     start=omp_get_wtime();
