@@ -3,6 +3,7 @@
 #include<stdio.h>
 #include<string.h>
 #include<time.h>
+#include<omp.h>
 #include<gmp.h>
 #include<tepla/ec.h>
 
@@ -88,6 +89,15 @@ int test(Peks peks,EC_POINT trapdoor,EC_PAIRING pair){
 }
 
 int main(void){
+  /*
+  double start,end;
+  start=omp_get_wtime();
+  for(i=0;i<5000;i++)
+    private_key_create(private_key,limit);
+  end=omp_get_wtime();
+  printf("time : %f seconds\n",(end-start)/5000);
+  */
+  int i;
 
   mpz_t limit;
   mpz_t private_key;
@@ -102,7 +112,8 @@ int main(void){
   Public_Key public_key;
   public_key_init(public_key,pair->g2);
 
-  mpz_set_ui(limit,1000000);
+  mpz_set_ui(limit,2);
+  mpz_pow_ui(limit,limit,254);
   private_key_create(private_key,limit);
   gmp_printf("private_key : %Zd\n",private_key);
 
@@ -121,10 +132,8 @@ int main(void){
   point_print(hash);
   */
 
-
   int n=5;
   char keyword[n][128];
-  int i;
 
   Peks peks[n];
   for(i=0;i<n;i++){
