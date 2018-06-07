@@ -72,7 +72,8 @@ int main(){
 
   start=omp_get_wtime();
   for(i=0;i<1000000;i++)
-    mpz_mul_mod(C,A,B,P);
+    mpz_mul(C,A,B);
+    mpz_mod(C,C,P);
   end=omp_get_wtime();
   gmp_printf("a*b : %ZX\n",C);
   printf("gmp    a*b : %f seconds\n",(end-start));
