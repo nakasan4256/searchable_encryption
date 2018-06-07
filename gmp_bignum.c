@@ -1,3 +1,4 @@
+//gcc -fopenmp -O2 -o test gmp_bignum.c -L/home/b1015014/lib -I/home/b1015014/include -lssl -lcrypto -lgmp
 #include<stdio.h>
 #include<string.h>
 #include<time.h>
