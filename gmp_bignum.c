@@ -47,12 +47,40 @@ int main(){
 
   start=omp_get_wtime();
   for(i=0;i<1000000;i++)
-    BN_mod_mul(c,a,b,p,ctx);
+    BN_mod_add(c,a,b,p,ctx);
   end=omp_get_wtime();
-  printf("a*b : ");
+  printf("a+b mod p : ");
   BN_print_fp(stdout,c);
   puts("");
-  printf("openssl a*b : %f seconds\n",(end-start));
+  printf("openssl a+b mod p : %f seconds\n",(end-start));
+
+  start=omp_get_wtime();
+  for(i=0;i<1000000;i++)
+    BN_mod_sub(c,a,b,p,ctx);
+  end=omp_get_wtime();
+  printf("a-b mod p : ");
+  BN_print_fp(stdout,c);
+  puts("");
+  printf("openssl a-b mod p : %f seconds\n",(end-start));
+
+  start=omp_get_wtime();
+  for(i=0;i<1000000;i++)
+    BN_mod_mul(c,a,b,p,ctx);
+  end=omp_get_wtime();
+  printf("a*b mod p : ");
+  BN_print_fp(stdout,c);
+  puts("");
+  printf("openssl a*b mod p : %f seconds\n",(end-start));
+
+  start=omp_get_wtime();
+  for(i=0;i<1000000;i++){
+    BN_mod_inverse(c,a,p,ctx);
+  }
+  end=omp_get_wtime();
+  printf("inverse of a mod p : ");
+  BN_print_fp(stdout,c);
+  puts("");
+  printf("openssl inverse of a mod p : %f seconds\n",(end-start));
 
   BN_free(a);
   BN_free(b);
@@ -71,12 +99,39 @@ int main(){
   mpz_set_str(P,PP,16);
 
   start=omp_get_wtime();
-  for(i=0;i<1000000;i++)
+  for(i=0;i<1000000;i++){
+    mpz_add(C,A,B);
+    mpz_mod(C,C,P);
+  }
+  end=omp_get_wtime();
+  gmp_printf("a+b mod p : %ZX\n",C);
+  printf("gmp    a+b mod p : %f seconds\n",(end-start));
+
+  start=omp_get_wtime();
+  for(i=0;i<1000000;i++){
+    mpz_sub(C,A,B);
+    mpz_mod(C,C,P);
+  }
+  end=omp_get_wtime();
+  gmp_printf("a-b mod p : %ZX\n",C);
+  printf("gmp    a-b mod p : %f seconds\n",(end-start));
+
+  start=omp_get_wtime();
+  for(i=0;i<1000000;i++){
     mpz_mul(C,A,B);
     mpz_mod(C,C,P);
+  }
   end=omp_get_wtime();
-  gmp_printf("a*b : %ZX\n",C);
-  printf("gmp    a*b : %f seconds\n",(end-start));
+  gmp_printf("a*b mod p : %ZX\n",C);
+  printf("gmp    a*b mod p : %f seconds\n",(end-start));
+
+  start=omp_get_wtime();
+  for(i=0;i<1000000;i++){
+    mpz_invert(C,A,P);
+  }
+  end=omp_get_wtime();
+  gmp_printf("inverse of a mod p : %ZX\n",C);
+  printf("gmp   inverse of a mod p : %f seconds\n",(end-start));
 
   mpz_clears(A,B,C,D,E,NULL);
 
