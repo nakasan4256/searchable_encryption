@@ -40,21 +40,22 @@ void EC_POINT_print(const EC_POINT *P,const Me_DATA me_data,BN_CTX *ctx){
   BIGNUM *Px,*Py,*Pz;
   Px=BN_new();
   Py=BN_new();
-  Pz=BN_new();
-  EC_POINT_get_Jprojective_coordinates_GFp(me_data->ec,P,Px,Py,Pz,ctx);
+  //Pz=BN_new();
+  //EC_POINT_get_Jprojective_coordinates_GFp(me_data->ec,P,Px,Py,Pz,ctx);
 
+  EC_POINT_get_affine_coordinates_GFp(me_data->ec,P,Px,Py,ctx);
   fprintf(stdout,"[ ");
   BN_print_fp(stdout,Px);
   fprintf(stdout," , ");
   BN_print_fp(stdout,Py);
-  fprintf(stdout," , ");
-  BN_print_fp(stdout,Pz);
+  //fprintf(stdout," , ");
+  //BN_print_fp(stdout,Pz);
   fprintf(stdout," ]");
   puts("");
 
   BN_clear_free(Px);
   BN_clear_free(Py);
-  BN_clear_free(Pz);
+  //BN_clear_free(Pz);
 }
 
 void gmp_point_add(gmp_EC_POINT R, gmp_EC_POINT P, gmp_EC_POINT Q, mpz_t p){
@@ -285,11 +286,11 @@ int main(){
   Z=EC_POINT_new(me_data->ec);
   BIGNUM *k;
   k=BN_new();
-  //BN_rand_range(k,me_data->order);
-  BN_set_word(k,1);
+  BN_rand_range(k,me_data->order);
+  //BN_set_word(k,1);
   EC_POINT_mul(me_data->ec,Y,k,NULL,NULL,ctx);
-  //BN_rand_range(k,me_data->order);
-  BN_set_word(k,2);
+  BN_rand_range(k,me_data->order);
+  //BN_set_word(k,2);
   EC_POINT_mul(me_data->ec,Z,k,NULL,NULL,ctx);
 
   BIGNUM *Y_co[3];
@@ -304,9 +305,22 @@ int main(){
   EC_POINT_print(Y,me_data,ctx);
   EC_POINT_print(Z,me_data,ctx);
   printf("-------------------------------------\n");
-  EC_POINT_add(me_data->ec,X,Y,Z,ctx);
+
+
+  start=omp_get_wtime();
+  for(i=0;i<100000;i++)
+    EC_POINT_add(me_data->ec,X,Y,Z,ctx);
+  end=omp_get_wtime();
+  printf("openssl_EC_POINT_add : %f seconds\n",(end-start));
+
   EC_POINT_print(X,me_data,ctx);
-  EC_POINT_dbl(me_data->ec,X,Y,ctx);
+
+  start=omp_get_wtime();
+  for(i=0;i<100000;i++)
+    EC_POINT_dbl(me_data->ec,X,Y,ctx);
+  end=omp_get_wtime();
+  printf("openssl_EC_POINT_dbl : %f seconds\n",(end-start));
+
   EC_POINT_print(X,me_data,ctx);
 
 
@@ -320,8 +334,8 @@ int main(){
   }
 
 
-  mpz_t gmp_p;
-  mpz_init(gmp_p);
+  mpz_t gmp_p,inv;
+  mpz_inits(gmp_p,inv,NULL);
   mpz_set_str(gmp_p,ppp,16);
 
   gmp_EC_POINT gmp_P,gmp_Q,gmp_R,gmp_S;
@@ -337,14 +351,38 @@ int main(){
   mpz_set_str(gmp_Q->y,Za[1],16);
   mpz_set_str(gmp_Q->z,Za[2],16);
 
-  gmp_printf("[ %ZX , %ZX , %ZX ]\n",gmp_P->x,gmp_P->y,gmp_P->z);
-  gmp_printf("[ %ZX , %ZX , %ZX ]\n",gmp_Q->x,gmp_Q->y,gmp_Q->z);
   printf("-------------------------------------\n");
 
-  gmp_point_add(gmp_R,gmp_P,gmp_Q,gmp_p);
-  gmp_printf("[ %ZX , %ZX , %ZX ]\n",gmp_R->x,gmp_R->y,gmp_R->z);
-  gmp_point_double(gmp_R,gmp_P,gmp_p);
-  gmp_printf("[ %ZX , %ZX , %ZX ]\n",gmp_R->x,gmp_R->y,gmp_R->z);
+  start=omp_get_wtime();
+  for(i=0;i<100000;i++)
+    gmp_point_add(gmp_R,gmp_P,gmp_Q,gmp_p);
+  end=omp_get_wtime();
+  printf("gmp_EC_POINT_add : %f seconds\n",(end-start));
+
+
+  mpz_invert(inv,gmp_R->z,gmp_p);
+  mpz_powm_ui(inv,inv,2,gmp_p);
+  mpz_mul_mod(gmp_R->x,gmp_R->x,inv,gmp_p);
+  mpz_invert(inv,gmp_R->z,gmp_p);
+  mpz_powm_ui(inv,inv,3,gmp_p);
+  mpz_mul_mod(gmp_R->y,gmp_R->y,inv,gmp_p);
+  mpz_set_ui(gmp_R->z,1);
+  gmp_printf("[ %ZX , %ZX ]\n",gmp_R->x,gmp_R->y);
+
+  start=omp_get_wtime();
+  for(i=0;i<100000;i++)
+    gmp_point_double(gmp_R,gmp_P,gmp_p);
+  end=omp_get_wtime();
+  printf("gmp_EC_POINT_dbl : %f seconds\n",(end-start));
+
+  mpz_invert(inv,gmp_R->z,gmp_p);
+  mpz_powm_ui(inv,inv,2,gmp_p);
+  mpz_mul_mod(gmp_R->x,gmp_R->x,inv,gmp_p);
+  mpz_invert(inv,gmp_R->z,gmp_p);
+  mpz_powm_ui(inv,inv,3,gmp_p);
+  mpz_mul_mod(gmp_R->y,gmp_R->y,inv,gmp_p);
+  mpz_set_ui(gmp_R->z,1);
+  gmp_printf("[ %ZX , %ZX ]\n",gmp_R->x,gmp_R->y);
 
 
   return 0;
