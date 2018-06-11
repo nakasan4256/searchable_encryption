@@ -57,14 +57,17 @@ void EC_POINT_print(const EC_POINT *P,const Me_DATA me_data,BN_CTX *ctx){
   BN_clear_free(Pz);
 }
 
-void gmp_point_add(gmp_EC_POINT R,const gmp_EC_POINT P,const gmp_EC_POINT Q,const mpz_t p){
+void gmp_point_add(gmp_EC_POINT R, gmp_EC_POINT P, gmp_EC_POINT Q, mpz_t p){
   //y^2=x^3+7 mod p
   mpz_t Z1Z1,Z2Z2,U1,U2,S1,S2,H,I,J,r,V,aa;
   mpz_inits(Z1Z1,Z2Z2,U1,U2,S1,S2,H,I,J,r,V,aa,NULL);
 
   mpz_powm_ui(Z1Z1,P->z,2,p);
+
   mpz_powm_ui(Z2Z2,Q->z,2,p);
+
   mpz_mul_mod(U1,P->x,Z2Z2,p);
+
   mpz_mul_mod(U2,Q->x,Z1Z1,p);
 
   mpz_mul_mod(S1,P->y,Q->z,p);
@@ -74,12 +77,16 @@ void gmp_point_add(gmp_EC_POINT R,const gmp_EC_POINT P,const gmp_EC_POINT Q,cons
   mpz_mul_mod(S2,S2,Z1Z1,p);
 
   mpz_sub_mod(H,U2,U1,p);
+
   mpz_mul_ui(I,H,2);
   mpz_powm_ui(I,I,2,p);
+
   mpz_mul_mod(J,H,I,p);
+
   mpz_sub_mod(r,S2,S1,p);
   mpz_mul_ui(r,r,2);
   mpz_mod(r,r,p);
+
   mpz_mul_mod(V,U1,I,p);
 
   mpz_powm_ui(R->x,r,2,p);
@@ -278,9 +285,11 @@ int main(){
   Z=EC_POINT_new(me_data->ec);
   BIGNUM *k;
   k=BN_new();
-  BN_rand_range(k,me_data->order);
+  //BN_rand_range(k,me_data->order);
+  BN_set_word(k,1);
   EC_POINT_mul(me_data->ec,Y,k,NULL,NULL,ctx);
-  BN_rand_range(k,me_data->order);
+  //BN_rand_range(k,me_data->order);
+  BN_set_word(k,2);
   EC_POINT_mul(me_data->ec,Z,k,NULL,NULL,ctx);
 
   BIGNUM *Y_co[3];
