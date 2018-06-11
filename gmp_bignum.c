@@ -6,18 +6,55 @@
 #include<gmp.h>
 #include<openssl/bn.h>
 
+typedef struct//Me関数のためのデータ一式
+{
+  EC_GROUP *ec;//楕円曲線 y^2=x^3+ax+b
+  BIGNUM *a;
+  BIGNUM *b;
+  BIGNUM *p;//標数
+  BIGNUM *order;//位数
+  EC_POINT *Z;//Meスカラー倍の補助元
+  int Z_sign;//補助元のsignの値
+  BIGNUM *k;//k>1
+}Me_DATA[1];
+
 typedef struct{
   mpz_t x;
   mpz_t y;
   mpz_t z;
 }gmp_EC_POINT[1];
 
+#define Me_data_init(me_data) do { me_data->ec=EC_GROUP_new_by_curve_name(714); me_data->a=BN_new(); me_data->b=BN_new(); me_data->p=BN_new(); me_data->order=BN_new(); me_data->Z=EC_POINT_new(me_data->ec); me_data->k=BN_new(); } while(0)
+#define Me_data_set(me_data) do { EC_GROUP_get_curve_GFp(me_data->ec,me_data->p,me_data->a,me_data->b,NULL); EC_GROUP_get_order(me_data->ec,me_data->order,NULL); } while(0)
+#define Me_data_set_Zk(me_data,Z,k) do { EC_POINT_copy(me_data->Z,Z); BN_copy(me_data->k,k); } while(0)
+#define Me_data_clear(me_data) do { EC_POINT_clear_free(me_data->Z); BN_clear_free(me_data->k); BN_clear_free(me_data->p); } while(0)
 #define gmp_EC_POINT_init(p) do { mpz_inits(p->x,p->y,p->z,NULL); } while(0)
 #define gmp_EC_POINT_set(p,X,Y,Z) do { mpz_set(p->x,X); mpz_set(p->y,Y); mpz_set(p->z,Z); } while(0)
 #define gmp_EC_POINT_clear(p) do { mpz_clears(p->x,p->y,p->z,NULL)} while(0)
 #define mpz_add_mod(a,b,c,p) do { mpz_add(a,b,c); mpz_mod(a,a,p); } while(0)
 #define mpz_sub_mod(a,b,c,p) do { mpz_sub(a,b,c); mpz_mod(a,a,p); } while(0)
 #define mpz_mul_mod(a,b,c,p) do { mpz_mul(a,b,c); mpz_mod(a,a,p); } while(0)
+
+void EC_POINT_print(const EC_POINT *P,const Me_DATA me_data,BN_CTX *ctx){
+  BIGNUM *Px,*Py,*Pz;
+  Px=BN_new();
+  Py=BN_new();
+  Pz=BN_new();
+  EC_POINT_get_Jprojective_coordinates_GFp(me_data->ec,P,Px,Py,Pz,ctx);
+
+  fprintf(stdout,"[ ");
+  BN_print_fp(stdout,Px);
+  fprintf(stdout," , ");
+  BN_print_fp(stdout,Py);
+  fprintf(stdout," , ");
+  BN_print_fp(stdout,Pz);
+  fprintf(stdout," ]");
+  puts("");
+
+  BN_clear_free(Px);
+  BN_clear_free(Py);
+  BN_clear_free(Pz);
+}
 
 void gmp_point_add(gmp_EC_POINT R,const gmp_EC_POINT P,const gmp_EC_POINT Q,const mpz_t p){
   //y^2=x^3+7 mod p
@@ -230,21 +267,63 @@ int main(){
 
   printf("-------------------------------------\n");
 
+  Me_DATA me_data;
+  Me_data_init(me_data);
+  Me_data_set(me_data);
 
+  EC_POINT *P,*Y,*Z;
+  P=EC_POINT_new(me_data->ec);
+  Y=EC_POINT_new(me_data->ec);
+  Z=EC_POINT_new(me_data->ec);
+  BIGNUM *k;
+  k=BN_new();
+  BN_rand_range(k,me_data->order);
+  EC_POINT_mul(me_data->ec,Y,k,NULL,NULL,ctx);
+  BN_rand_range(k,me_data->order);
+  EC_POINT_mul(me_data->ec,Z,k,NULL,NULL,ctx);
+  BIGNUM *Y_co[3];
+  BIGNUM *Z_co[3];
+  EC_POINT_get_Jprojective_coordinates_GFp(me_data->ec,Y,Y_co[0],Y_co[1],Y_co[2],ctx);
+  EC_POINT_get_Jprojective_coordinates_GFp(me_data->ec,Z,Z_co[0],Z_co[1],Z_co[2],ctx);
 
+  EC_POINT_add(me_data->ec,P,Y,Z,ctx);
+  EC_POINT_print(P,me_data,ctx);
+  EC_POINT_dbl(me_data->ec,P,Y,ctx);
+  EC_POINT_print(P,me_data,ctx);
+  
 
+  char *ppp;
+  ppp=BN_bn2hex(me_data->p);
+  char *Ya[3];
+  char *Za[3];
+  for(i=0;i<3;i++){
+    Ya[i]=BN_bn2hex(Y_co[i]);
+    Za[i]=BN_bn2hex(Z_co[i]);
+  }
 
 
   mpz_t gmp_p;
+  mpz_set_str(gmp_p,,16);
+  mpz_init(gmp_p);
+  mpz_set_str(gmp_p,ppp,16);
+
   gmp_EC_POINT gmp_P,gmp_Q,gmp_R,gmp_S;
   gmp_EC_POINT_init(gmp_P);
   gmp_EC_POINT_init(gmp_Q);
   gmp_EC_POINT_init(gmp_R);
   gmp_EC_POINT_init(gmp_S);
 
-  mpz_set_ui(gmp_P->x,0);
-  mpz_set_ui(gmp_P->y,7);
-  mpz_set_ui(gmp_P->z,1);
+  mpz_set_str(gmp_P->x,Ya[0],16);
+  mpz_set_str(gmp_P->y,Ya[1],16);
+  mpz_set_str(gmp_P->z,Ya[2],16);
+  mpz_set_str(gmp_Q->x,Ya[0],16);
+  mpz_set_str(gmp_Q->y,Ya[1],16);
+  mpz_set_str(gmp_Q->z,Ya[2],16);
+
+  gmp_point_add(gmp_R,gmp_P,gmp_Q,gmp_p);
+  gmp_printf("R : ( %ZX , %ZX ,%ZX )\n",gmp_R->x,gmp_R->y,gmp_R->z);
+  gmp_point_double(gmp_R,gmp_P,gmp_p);
+  gmp_printf("R : ( %ZX , %ZX ,%ZX )\n",gmp_R->x,gmp_R->y,gmp_R->z);
 
 
   return 0;
