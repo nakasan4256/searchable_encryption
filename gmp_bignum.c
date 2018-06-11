@@ -4,6 +4,7 @@
 #include<time.h>
 #include<omp.h>
 #include<gmp.h>
+#include<openssl/ec.h>
 #include<openssl/bn.h>
 
 typedef struct//Me関数のためのデータ一式
@@ -61,8 +62,8 @@ void gmp_point_add(gmp_EC_POINT R,const gmp_EC_POINT P,const gmp_EC_POINT Q,cons
   mpz_t Z1Z1,Z2Z2,U1,U2,S1,S2,H,I,J,r,V,aa;
   mpz_inits(Z1Z1,Z2Z2,U1,U2,S1,S2,H,I,J,r,V,aa,NULL);
 
-  mpz_pow_ui(Z1Z1,P->z,2,p);
-  mpz_pow_ui(Z2Z2,Q->z,2,p);
+  mpz_powm_ui(Z1Z1,P->z,2,p);
+  mpz_powm_ui(Z2Z2,Q->z,2,p);
   mpz_mul_mod(U1,P->x,Z2Z2,p);
   mpz_mul_mod(U2,Q->x,Z1Z1,p);
 
@@ -74,14 +75,14 @@ void gmp_point_add(gmp_EC_POINT R,const gmp_EC_POINT P,const gmp_EC_POINT Q,cons
 
   mpz_sub_mod(H,U2,U1,p);
   mpz_mul_ui(I,H,2);
-  mpz_pow_ui(I,I,2,p);
+  mpz_powm_ui(I,I,2,p);
   mpz_mul_mod(J,H,I,p);
   mpz_sub_mod(r,S2,S1,p);
   mpz_mul_ui(r,r,2);
   mpz_mod(r,r,p);
   mpz_mul_mod(V,U1,I,p);
 
-  mpz_pow_ui(R->x,r,2,p);
+  mpz_powm_ui(R->x,r,2,p);
   mpz_sub_mod(R->x,R->x,J,p);
   mpz_mul_ui(aa,V,2);
   mpz_sub_mod(R->x,R->x,aa,p);
@@ -92,8 +93,8 @@ void gmp_point_add(gmp_EC_POINT R,const gmp_EC_POINT P,const gmp_EC_POINT Q,cons
   mpz_mul_mod(aa,aa,J,p);
   mpz_sub_mod(R->y,R->y,aa,p);
 
-  mpz_add_mod(R->z,Z1,Z2,p);
-  mpz_pow_ui(R->z,R->z,2,p);
+  mpz_add_mod(R->z,P->z,Q->z,p);
+  mpz_powm_ui(R->z,R->z,2,p);
   mpz_sub_mod(R->z,R->z,Z1Z1,p);
   mpz_sub_mod(R->z,R->z,Z2Z2,p);
   mpz_mul_mod(R->z,R->z,H,p);
@@ -106,12 +107,12 @@ void gmp_point_double(gmp_EC_POINT R,const gmp_EC_POINT P,const mpz_t p){
   mpz_t A,B,C,D,E,F;
   mpz_inits(A,B,C,D,E,F,NULL);
 
-  mpz_pow_ui(A,P->x,2,p);
-  mpz_pow_ui(B,P->y,2,p);
-  mpz_pow_ui(C,B,2,p);
+  mpz_powm_ui(A,P->x,2,p);
+  mpz_powm_ui(B,P->y,2,p);
+  mpz_powm_ui(C,B,2,p);
 
   mpz_add_mod(D,P->x,B,p);
-  mpz_pow_ui(D,D,2,p);
+  mpz_powm_ui(D,D,2,p);
   mpz_sub_mod(D,D,A,p);
   mpz_sub_mod(D,D,C,p);
   mpz_mul_ui(D,D,2);
@@ -119,7 +120,7 @@ void gmp_point_double(gmp_EC_POINT R,const gmp_EC_POINT P,const mpz_t p){
 
   mpz_mul_ui(E,A,3);
   mpz_mod(E,E,p);
-  mpz_pow_ui(F,E,2,p);
+  mpz_powm_ui(F,E,2,p);
 
   mpz_mul_ui(R->x,D,2);
   mpz_sub_mod(R->x,F,R->x,p);
@@ -271,8 +272,8 @@ int main(){
   Me_data_init(me_data);
   Me_data_set(me_data);
 
-  EC_POINT *P,*Y,*Z;
-  P=EC_POINT_new(me_data->ec);
+  EC_POINT *X,*Y,*Z;
+  X=EC_POINT_new(me_data->ec);
   Y=EC_POINT_new(me_data->ec);
   Z=EC_POINT_new(me_data->ec);
   BIGNUM *k;
@@ -281,16 +282,24 @@ int main(){
   EC_POINT_mul(me_data->ec,Y,k,NULL,NULL,ctx);
   BN_rand_range(k,me_data->order);
   EC_POINT_mul(me_data->ec,Z,k,NULL,NULL,ctx);
+
   BIGNUM *Y_co[3];
   BIGNUM *Z_co[3];
+  for(i=0;i<3;i++){
+    Y_co[i]=BN_new();
+    Z_co[i]=BN_new();
+  }
   EC_POINT_get_Jprojective_coordinates_GFp(me_data->ec,Y,Y_co[0],Y_co[1],Y_co[2],ctx);
   EC_POINT_get_Jprojective_coordinates_GFp(me_data->ec,Z,Z_co[0],Z_co[1],Z_co[2],ctx);
 
-  EC_POINT_add(me_data->ec,P,Y,Z,ctx);
-  EC_POINT_print(P,me_data,ctx);
-  EC_POINT_dbl(me_data->ec,P,Y,ctx);
-  EC_POINT_print(P,me_data,ctx);
-  
+  EC_POINT_print(Y,me_data,ctx);
+  EC_POINT_print(Z,me_data,ctx);
+  printf("-------------------------------------\n");
+  EC_POINT_add(me_data->ec,X,Y,Z,ctx);
+  EC_POINT_print(X,me_data,ctx);
+  EC_POINT_dbl(me_data->ec,X,Y,ctx);
+  EC_POINT_print(X,me_data,ctx);
+
 
   char *ppp;
   ppp=BN_bn2hex(me_data->p);
@@ -303,7 +312,6 @@ int main(){
 
 
   mpz_t gmp_p;
-  mpz_set_str(gmp_p,,16);
   mpz_init(gmp_p);
   mpz_set_str(gmp_p,ppp,16);
 
@@ -316,14 +324,18 @@ int main(){
   mpz_set_str(gmp_P->x,Ya[0],16);
   mpz_set_str(gmp_P->y,Ya[1],16);
   mpz_set_str(gmp_P->z,Ya[2],16);
-  mpz_set_str(gmp_Q->x,Ya[0],16);
-  mpz_set_str(gmp_Q->y,Ya[1],16);
-  mpz_set_str(gmp_Q->z,Ya[2],16);
+  mpz_set_str(gmp_Q->x,Za[0],16);
+  mpz_set_str(gmp_Q->y,Za[1],16);
+  mpz_set_str(gmp_Q->z,Za[2],16);
+
+  gmp_printf("[ %ZX , %ZX , %ZX ]\n",gmp_P->x,gmp_P->y,gmp_P->z);
+  gmp_printf("[ %ZX , %ZX , %ZX ]\n",gmp_Q->x,gmp_Q->y,gmp_Q->z);
+  printf("-------------------------------------\n");
 
   gmp_point_add(gmp_R,gmp_P,gmp_Q,gmp_p);
-  gmp_printf("R : ( %ZX , %ZX ,%ZX )\n",gmp_R->x,gmp_R->y,gmp_R->z);
+  gmp_printf("[ %ZX , %ZX , %ZX ]\n",gmp_R->x,gmp_R->y,gmp_R->z);
   gmp_point_double(gmp_R,gmp_P,gmp_p);
-  gmp_printf("R : ( %ZX , %ZX ,%ZX )\n",gmp_R->x,gmp_R->y,gmp_R->z);
+  gmp_printf("[ %ZX , %ZX , %ZX ]\n",gmp_R->x,gmp_R->y,gmp_R->z);
 
 
   return 0;
