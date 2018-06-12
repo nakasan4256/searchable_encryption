@@ -42,6 +42,10 @@ void EC_POINT_print(const EC_POINT *P,const Me_DATA me_data,BN_CTX *ctx){
   Py=BN_new();
   //Pz=BN_new();
   //EC_POINT_get_Jprojective_coordinates_GFp(me_data->ec,P,Px,Py,Pz,ctx);
+<<<<<<< HEAD
+=======
+  EC_POINT_get_affine_coordinates_GFp(me_data->ec,P,Px,Py,ctx);
+>>>>>>> 5b4356a27f75f915b27a299f0af3f4d600fc2c85
 
   EC_POINT_get_affine_coordinates_GFp(me_data->ec,P,Px,Py,ctx);
   fprintf(stdout,"[ ");
@@ -58,56 +62,36 @@ void EC_POINT_print(const EC_POINT *P,const Me_DATA me_data,BN_CTX *ctx){
   //BN_clear_free(Pz);
 }
 
-void gmp_point_add(gmp_EC_POINT R, gmp_EC_POINT P, gmp_EC_POINT Q, mpz_t p){
-  //y^2=x^3+7 mod p
-  mpz_t Z1Z1,Z2Z2,U1,U2,S1,S2,H,I,J,r,V,aa;
-  mpz_inits(Z1Z1,Z2Z2,U1,U2,S1,S2,H,I,J,r,V,aa,NULL);
+void gmp_EC_POINT_print(const gmp_EC_POINT P,const mpz_t p){
+  mpz_t inv2,inv3;
+  mpz_inits(inv2,inv3,NULL);
 
-  mpz_powm_ui(Z1Z1,P->z,2,p);
+  mpz_invert(inv3,P->z,p);
+  mpz_powm_ui(inv2,inv3,2,p);
+  mpz_mul_mod(inv3,inv3,inv2,p);
+  mpz_mul_mod(inv2,inv2,P->x,p);
+  mpz_mul_mod(inv3,inv3,P->y,p);
 
-  mpz_powm_ui(Z2Z2,Q->z,2,p);
+  gmp_printf("[ %ZX , %ZX ]\n",inv2,inv3);
 
-  mpz_mul_mod(U1,P->x,Z2Z2,p);
+  mpz_clears(inv2,inv3,NULL);
+}
 
-  mpz_mul_mod(U2,Q->x,Z1Z1,p);
+int gmp_EC_POINT_cmp(const gmp_EC_POINT P, const gmp_EC_POINT Q,const mpz_t p){
 
-  mpz_mul_mod(S1,P->y,Q->z,p);
-  mpz_mul_mod(S1,S1,Z2Z2,p);
+  mpz_t Za23,Zb23;
+  mpz_inits(Za23,Zb23,NULL);
 
-  mpz_mul_mod(S2,Q->y,P->z,p);
-  mpz_mul_mod(S2,S2,Z1Z1,p);
+  mpz_powm_ui(Zb23,Q->z,2,p);
+  mpz_mul_mod(Zb23,Zb23,P->x,p);
+  mpz_powm_ui(Za23,P->z,2,p);
+  mpz_mul_mod(Za23,Za23,Q->x,p);
 
-  mpz_sub_mod(H,U2,U1,p);
+  int ret=mpz_cmp(Za23,Zb23);
 
-  mpz_mul_ui(I,H,2);
-  mpz_powm_ui(I,I,2,p);
+  mpz_clears(Za23,Zb23,NULL);
 
-  mpz_mul_mod(J,H,I,p);
-
-  mpz_sub_mod(r,S2,S1,p);
-  mpz_mul_ui(r,r,2);
-  mpz_mod(r,r,p);
-
-  mpz_mul_mod(V,U1,I,p);
-
-  mpz_powm_ui(R->x,r,2,p);
-  mpz_sub_mod(R->x,R->x,J,p);
-  mpz_mul_ui(aa,V,2);
-  mpz_sub_mod(R->x,R->x,aa,p);
-
-  mpz_sub_mod(R->y,V,R->x,p);
-  mpz_mul_mod(R->y,R->y,r,p);
-  mpz_mul_ui(aa,S1,2);
-  mpz_mul_mod(aa,aa,J,p);
-  mpz_sub_mod(R->y,R->y,aa,p);
-
-  mpz_add_mod(R->z,P->z,Q->z,p);
-  mpz_powm_ui(R->z,R->z,2,p);
-  mpz_sub_mod(R->z,R->z,Z1Z1,p);
-  mpz_sub_mod(R->z,R->z,Z2Z2,p);
-  mpz_mul_mod(R->z,R->z,H,p);
-
-  mpz_clears(Z1Z1,Z2Z2,U1,U2,S1,S2,H,I,J,r,V,aa,NULL);
+  return ret;
 }
 
 void gmp_point_double(gmp_EC_POINT R,const gmp_EC_POINT P,const mpz_t p){
@@ -143,6 +127,71 @@ void gmp_point_double(gmp_EC_POINT R,const gmp_EC_POINT P,const mpz_t p){
   mpz_mul_mod(R->z,R->z,P->z,p);
 
   mpz_clears(A,B,C,D,E,F,NULL);
+}
+
+void gmp_point_add(gmp_EC_POINT R, const gmp_EC_POINT P, const gmp_EC_POINT Q, mpz_t p){
+  
+  if(!mpz_cmp_d(P->z,0)){
+    mpz_set(R->x,Q->x);
+    mpz_set(R->y,Q->y);
+    mpz_set(R->z,Q->z);
+    return;
+  }
+  if(!mpz_cmp_d(Q->z,0)){
+    mpz_set(R->x,P->x);
+    mpz_set(R->y,P->y);
+    mpz_set(R->z,P->z);
+    return;
+  }
+
+  if(!gmp_EC_POINT_cmp(P,Q,p)){
+    gmp_point_double(R,P,p);
+    return;
+  }
+
+  //y^2=x^3+7 mod p
+  mpz_t Z1Z1,Z2Z2,U1,U2,S1,S2,H,I,J,r,V,aa;
+  mpz_inits(Z1Z1,Z2Z2,U1,U2,S1,S2,H,I,J,r,V,aa,NULL);
+
+  mpz_powm_ui(Z1Z1,P->z,2,p);
+  mpz_powm_ui(Z2Z2,Q->z,2,p);
+  mpz_mul_mod(U1,P->x,Z2Z2,p);
+  mpz_mul_mod(U2,Q->x,Z1Z1,p);
+
+  mpz_mul_mod(S1,P->y,Q->z,p);
+  mpz_mul_mod(S1,S1,Z2Z2,p);
+
+  mpz_mul_mod(S2,Q->y,P->z,p);
+  mpz_mul_mod(S2,S2,Z1Z1,p);
+
+  mpz_sub_mod(H,U2,U1,p);
+  mpz_mul_ui(I,H,2);
+  mpz_powm_ui(I,I,2,p);
+
+  mpz_mul_mod(J,H,I,p);
+  mpz_sub_mod(r,S2,S1,p);
+  mpz_mul_ui(r,r,2);
+  mpz_mod(r,r,p);
+  mpz_mul_mod(V,U1,I,p);
+
+  mpz_powm_ui(R->x,r,2,p);
+  mpz_sub_mod(R->x,R->x,J,p);
+  mpz_mul_ui(aa,V,2);
+  mpz_sub_mod(R->x,R->x,aa,p);
+
+  mpz_sub_mod(R->y,V,R->x,p);
+  mpz_mul_mod(R->y,R->y,r,p);
+  mpz_mul_ui(aa,S1,2);
+  mpz_mul_mod(aa,aa,J,p);
+  mpz_sub_mod(R->y,R->y,aa,p);
+
+  mpz_add_mod(R->z,P->z,Q->z,p);
+  mpz_powm_ui(R->z,R->z,2,p);
+  mpz_sub_mod(R->z,R->z,Z1Z1,p);
+  mpz_sub_mod(R->z,R->z,Z2Z2,p);
+  mpz_mul_mod(R->z,R->z,H,p);
+
+  mpz_clears(Z1Z1,Z2Z2,U1,U2,S1,S2,H,I,J,r,V,aa,NULL);
 }
 
 int main(){
@@ -306,6 +355,7 @@ int main(){
   EC_POINT_print(Z,me_data,ctx);
   printf("-------------------------------------\n");
 
+<<<<<<< HEAD
 
   start=omp_get_wtime();
   for(i=0;i<100000;i++)
@@ -321,8 +371,24 @@ int main(){
   end=omp_get_wtime();
   printf("openssl_EC_POINT_dbl : %f seconds\n",(end-start));
 
+=======
+  start=omp_get_wtime();
+  for(i=0;i<1000000;i++){
+    EC_POINT_add(me_data->ec,X,Y,Z,ctx);
+  }
+  end=omp_get_wtime();
+>>>>>>> 5b4356a27f75f915b27a299f0af3f4d600fc2c85
   EC_POINT_print(X,me_data,ctx);
+  printf("openssl point_add : %f seconds\n",(end-start));
 
+  start=omp_get_wtime();
+  for(i=0;i<1000000;i++){
+    EC_POINT_dbl(me_data->ec,X,Y,ctx);
+  }
+  end=omp_get_wtime();
+  EC_POINT_print(X,me_data,ctx);
+  printf("openssl point_dbl : %f seconds\n",(end-start));
+  printf("-------------------------------------\n");
 
   char *ppp;
   ppp=BN_bn2hex(me_data->p);
@@ -333,9 +399,14 @@ int main(){
     Za[i]=BN_bn2hex(Z_co[i]);
   }
 
+<<<<<<< HEAD
 
   mpz_t gmp_p,inv;
   mpz_inits(gmp_p,inv,NULL);
+=======
+  mpz_t gmp_p;
+  mpz_init(gmp_p);
+>>>>>>> 5b4356a27f75f915b27a299f0af3f4d600fc2c85
   mpz_set_str(gmp_p,ppp,16);
 
   gmp_EC_POINT gmp_P,gmp_Q,gmp_R,gmp_S;
@@ -351,6 +422,7 @@ int main(){
   mpz_set_str(gmp_Q->y,Za[1],16);
   mpz_set_str(gmp_Q->z,Za[2],16);
 
+<<<<<<< HEAD
   printf("-------------------------------------\n");
 
   start=omp_get_wtime();
@@ -383,7 +455,29 @@ int main(){
   mpz_mul_mod(gmp_R->y,gmp_R->y,inv,gmp_p);
   mpz_set_ui(gmp_R->z,1);
   gmp_printf("[ %ZX , %ZX ]\n",gmp_R->x,gmp_R->y);
+=======
 
+  gmp_EC_POINT_print(gmp_P,gmp_p);
+  gmp_EC_POINT_print(gmp_Q,gmp_p);
+  printf("-------------------------------------\n");
+
+  gmp_point_add(gmp_R,gmp_P,gmp_Q,gmp_p);
+  start=omp_get_wtime();
+  for(i=0;i<1000000;i++){
+    gmp_point_add(gmp_R,gmp_P,gmp_Q,gmp_p);
+  }
+  end=omp_get_wtime();
+  gmp_EC_POINT_print(gmp_R,gmp_p);
+  printf("gmp point_add : %f seconds\n",(end-start));
+>>>>>>> 5b4356a27f75f915b27a299f0af3f4d600fc2c85
+
+  start=omp_get_wtime();
+  for(i=0;i<1000000;i++){
+    gmp_point_double(gmp_R,gmp_P,gmp_p);
+  }
+  end=omp_get_wtime();
+  gmp_EC_POINT_print(gmp_R,gmp_p);
+  printf("gmp point_dbl : %f seconds\n",(end-start));
 
   return 0;
 }
