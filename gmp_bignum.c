@@ -148,11 +148,8 @@ void gmp_point_add(gmp_EC_POINT R, const gmp_EC_POINT P, const gmp_EC_POINT Q, m
   mpz_inits(Z1Z1,Z2Z2,U1,U2,S1,S2,H,I,J,r,V,aa,NULL);
 
   mpz_powm_ui(Z1Z1,P->z,2,p);
-
   mpz_powm_ui(Z2Z2,Q->z,2,p);
-
   mpz_mul_mod(U1,P->x,Z2Z2,p);
-
   mpz_mul_mod(U2,Q->x,Z1Z1,p);
 
   mpz_mul_mod(S1,P->y,Q->z,p);
@@ -162,16 +159,13 @@ void gmp_point_add(gmp_EC_POINT R, const gmp_EC_POINT P, const gmp_EC_POINT Q, m
   mpz_mul_mod(S2,S2,Z1Z1,p);
 
   mpz_sub_mod(H,U2,U1,p);
-
   mpz_mul_ui(I,H,2);
   mpz_powm_ui(I,I,2,p);
 
   mpz_mul_mod(J,H,I,p);
-
   mpz_sub_mod(r,S2,S1,p);
   mpz_mul_ui(r,r,2);
   mpz_mod(r,r,p);
-
   mpz_mul_mod(V,U1,I,p);
 
   mpz_powm_ui(R->x,r,2,p);
@@ -356,7 +350,7 @@ int main(){
   printf("-------------------------------------\n");
 
   start=omp_get_wtime();
-  for(i=0;i<100000;i++){
+  for(i=0;i<1000000;i++){
     EC_POINT_add(me_data->ec,X,Y,Z,ctx);
   }
   end=omp_get_wtime();
@@ -364,7 +358,7 @@ int main(){
   printf("openssl point_add : %f seconds\n",(end-start));
 
   start=omp_get_wtime();
-  for(i=0;i<100000;i++){
+  for(i=0;i<1000000;i++){
     EC_POINT_dbl(me_data->ec,X,Y,ctx);
   }
   end=omp_get_wtime();
@@ -405,7 +399,7 @@ int main(){
 
   gmp_point_add(gmp_R,gmp_P,gmp_Q,gmp_p);
   start=omp_get_wtime();
-  for(i=0;i<100000;i++){
+  for(i=0;i<1000000;i++){
     gmp_point_add(gmp_R,gmp_P,gmp_Q,gmp_p);
   }
   end=omp_get_wtime();
@@ -413,7 +407,7 @@ int main(){
   printf("gmp point_add : %f seconds\n",(end-start));
 
   start=omp_get_wtime();
-  for(i=0;i<100000;i++){
+  for(i=0;i<1000000;i++){
     gmp_point_double(gmp_R,gmp_P,gmp_p);
   }
   end=omp_get_wtime();
