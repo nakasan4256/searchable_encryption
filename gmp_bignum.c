@@ -126,7 +126,7 @@ void gmp_point_double(gmp_EC_POINT R,const gmp_EC_POINT P,const mpz_t p){
 }
 
 void gmp_point_add(gmp_EC_POINT R, const gmp_EC_POINT P, const gmp_EC_POINT Q, mpz_t p){
-
+  /*
   if(!mpz_cmp_d(P->z,0)){
     mpz_set(R->x,Q->x);
     mpz_set(R->y,Q->y);
@@ -139,7 +139,7 @@ void gmp_point_add(gmp_EC_POINT R, const gmp_EC_POINT P, const gmp_EC_POINT Q, m
     mpz_set(R->z,P->z);
     return;
   }
-  /*
+
   if(!gmp_EC_POINT_cmp(P,Q,p)){
     gmp_point_double(R,P,p);
     return;
