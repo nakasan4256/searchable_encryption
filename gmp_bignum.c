@@ -90,6 +90,41 @@ int gmp_EC_POINT_cmp(const gmp_EC_POINT P, const gmp_EC_POINT Q,const mpz_t p){
   return ret;
 }
 
+void gmp_point_double(gmp_EC_POINT R,const gmp_EC_POINT P,const mpz_t p){
+  //y^2=x^3+7 mod p
+  mpz_t A,B,C,D,E,F;
+  mpz_inits(A,B,C,D,E,F,NULL);
+
+  mpz_powm_ui(A,P->x,2,p);
+  mpz_powm_ui(B,P->y,2,p);
+  mpz_powm_ui(C,B,2,p);
+
+  mpz_add_mod(D,P->x,B,p);
+  mpz_powm_ui(D,D,2,p);
+  mpz_sub_mod(D,D,A,p);
+  mpz_sub_mod(D,D,C,p);
+  mpz_mul_ui(D,D,2);
+  mpz_mod(D,D,p);
+
+  mpz_mul_ui(E,A,3);
+  mpz_mod(E,E,p);
+  mpz_powm_ui(F,E,2,p);
+
+  mpz_mul_ui(R->x,D,2);
+  mpz_sub_mod(R->x,F,R->x,p);
+
+  mpz_sub_mod(R->y,D,R->x,p);
+  mpz_mul_mod(R->y,R->y,E,p);
+  mpz_mul_ui(C,C,8);
+  mpz_mod(C,C,p);
+  mpz_sub_mod(R->y,R->y,C,p);
+
+  mpz_mul_ui(R->z,P->y,2);
+  mpz_mul_mod(R->z,R->z,P->z,p);
+
+  mpz_clears(A,B,C,D,E,F,NULL);
+}
+
 void gmp_point_add(gmp_EC_POINT R, const gmp_EC_POINT P, const gmp_EC_POINT Q, mpz_t p){
 
   if(!mpz_cmp_d(P->z,0)){
@@ -157,41 +192,6 @@ void gmp_point_add(gmp_EC_POINT R, const gmp_EC_POINT P, const gmp_EC_POINT Q, m
   mpz_mul_mod(R->z,R->z,H,p);
 
   mpz_clears(Z1Z1,Z2Z2,U1,U2,S1,S2,H,I,J,r,V,aa,NULL);
-}
-
-void gmp_point_double(gmp_EC_POINT R,const gmp_EC_POINT P,const mpz_t p){
-  //y^2=x^3+7 mod p
-  mpz_t A,B,C,D,E,F;
-  mpz_inits(A,B,C,D,E,F,NULL);
-
-  mpz_powm_ui(A,P->x,2,p);
-  mpz_powm_ui(B,P->y,2,p);
-  mpz_powm_ui(C,B,2,p);
-
-  mpz_add_mod(D,P->x,B,p);
-  mpz_powm_ui(D,D,2,p);
-  mpz_sub_mod(D,D,A,p);
-  mpz_sub_mod(D,D,C,p);
-  mpz_mul_ui(D,D,2);
-  mpz_mod(D,D,p);
-
-  mpz_mul_ui(E,A,3);
-  mpz_mod(E,E,p);
-  mpz_powm_ui(F,E,2,p);
-
-  mpz_mul_ui(R->x,D,2);
-  mpz_sub_mod(R->x,F,R->x,p);
-
-  mpz_sub_mod(R->y,D,R->x,p);
-  mpz_mul_mod(R->y,R->y,E,p);
-  mpz_mul_ui(C,C,8);
-  mpz_mod(C,C,p);
-  mpz_sub_mod(R->y,R->y,C,p);
-
-  mpz_mul_ui(R->z,P->y,2);
-  mpz_mul_mod(R->z,R->z,P->z,p);
-
-  mpz_clears(A,B,C,D,E,F,NULL);
 }
 
 int main(){
@@ -399,8 +399,8 @@ int main(){
   mpz_set_str(gmp_Q->z,Za[2],16);
 
 
-  gmp_EC_POINT_print(P,p);
-  gmp_EC_POINT_print(Q,p);
+  gmp_EC_POINT_print(gmp_P,gmp_p);
+  gmp_EC_POINT_print(gmp_Q,gmp_p);
   printf("-------------------------------------\n");
 
   gmp_point_add(gmp_R,gmp_P,gmp_Q,gmp_p);
@@ -409,7 +409,7 @@ int main(){
     gmp_point_add(gmp_R,gmp_P,gmp_Q,gmp_p);
   }
   end=omp_get_wtime();
-  gmp_EC_POINT_print(R,p);
+  gmp_EC_POINT_print(gmp_R,gmp_p);
   printf("gmp point_add : %f seconds\n",(end-start));
 
   start=omp_get_wtime();
@@ -417,7 +417,7 @@ int main(){
     gmp_point_double(gmp_R,gmp_P,gmp_p);
   }
   end=omp_get_wtime();
-  gmp_EC_POINT_print(R,p);
+  gmp_EC_POINT_print(gmp_R,gmp_p);
   printf("gmp point_dbl : %f seconds\n",(end-start));
 
   return 0;
