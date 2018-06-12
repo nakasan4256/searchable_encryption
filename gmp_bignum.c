@@ -58,7 +58,7 @@ void EC_POINT_print(const EC_POINT *P,const Me_DATA me_data,BN_CTX *ctx){
   BN_clear_free(Pz);
 }
 
-void gmp_point_add(gmp_EC_POINT R, gmp_EC_POINT P, gmp_EC_POINT Q, mpz_t p){
+void gmp_point_add(gmp_EC_POINT R, const gmp_EC_POINT P, const gmp_EC_POINT Q, mpz_t p){
   //y^2=x^3+7 mod p
   mpz_t Z1Z1,Z2Z2,U1,U2,S1,S2,H,I,J,r,V,aa;
   mpz_inits(Z1Z1,Z2Z2,U1,U2,S1,S2,H,I,J,r,V,aa,NULL);
