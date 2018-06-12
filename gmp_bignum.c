@@ -354,11 +354,23 @@ int main(){
   EC_POINT_print(Y,me_data,ctx);
   EC_POINT_print(Z,me_data,ctx);
   printf("-------------------------------------\n");
-  EC_POINT_add(me_data->ec,X,Y,Z,ctx);
-  EC_POINT_print(X,me_data,ctx);
-  EC_POINT_dbl(me_data->ec,X,Y,ctx);
-  EC_POINT_print(X,me_data,ctx);
 
+  start=omp_get_wtime();
+  for(i=0;i<100000;i++){
+    EC_POINT_add(me_data->ec,X,Y,Z,ctx);
+  }
+  end=omp_get_wtime();
+  EC_POINT_print(X,me_data,ctx);
+  printf("openssl point_add : %f seconds\n",(end-start));
+
+  start=omp_get_wtime();
+  for(i=0;i<100000;i++){
+    EC_POINT_dbl(me_data->ec,X,Y,ctx);
+  }
+  end=omp_get_wtime();
+  EC_POINT_print(X,me_data,ctx);
+  printf("openssl point_dbl : %f seconds\n",(end-start));
+  printf("-------------------------------------\n");
 
   char *ppp;
   ppp=BN_bn2hex(me_data->p);
@@ -368,7 +380,6 @@ int main(){
     Ya[i]=BN_bn2hex(Y_co[i]);
     Za[i]=BN_bn2hex(Z_co[i]);
   }
-
 
   mpz_t gmp_p;
   mpz_init(gmp_p);
@@ -387,15 +398,27 @@ int main(){
   mpz_set_str(gmp_Q->y,Za[1],16);
   mpz_set_str(gmp_Q->z,Za[2],16);
 
-  gmp_printf("[ %ZX , %ZX , %ZX ]\n",gmp_P->x,gmp_P->y,gmp_P->z);
-  gmp_printf("[ %ZX , %ZX , %ZX ]\n",gmp_Q->x,gmp_Q->y,gmp_Q->z);
+
+  gmp_EC_POINT_print(P,p);
+  gmp_EC_POINT_print(Q,p);
   printf("-------------------------------------\n");
 
   gmp_point_add(gmp_R,gmp_P,gmp_Q,gmp_p);
-  gmp_printf("[ %ZX , %ZX , %ZX ]\n",gmp_R->x,gmp_R->y,gmp_R->z);
-  gmp_point_double(gmp_R,gmp_P,gmp_p);
-  gmp_printf("[ %ZX , %ZX , %ZX ]\n",gmp_R->x,gmp_R->y,gmp_R->z);
+  start=omp_get_wtime();
+  for(i=0;i<100000;i++){
+    gmp_point_add(gmp_R,gmp_P,gmp_Q,gmp_p);
+  }
+  end=omp_get_wtime();
+  gmp_EC_POINT_print(R,p);
+  printf("gmp point_add : %f seconds\n",(end-start));
 
+  start=omp_get_wtime();
+  for(i=0;i<100000;i++){
+    gmp_point_double(gmp_R,gmp_P,gmp_p);
+  }
+  end=omp_get_wtime();
+  gmp_EC_POINT_print(R,p);
+  printf("gmp point_dbl : %f seconds\n",(end-start));
 
   return 0;
 }
