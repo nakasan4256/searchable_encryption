@@ -139,10 +139,12 @@ void gmp_point_add(gmp_EC_POINT R, const gmp_EC_POINT P, const gmp_EC_POINT Q, m
     mpz_set(R->z,P->z);
     return;
   }
+  /*
   if(!gmp_EC_POINT_cmp(P,Q,p)){
     gmp_point_double(R,P,p);
     return;
   }
+  */
   //y^2=x^3+7 mod p
   mpz_t Z1Z1,Z2Z2,U1,U2,S1,S2,H,I,J,r,V,aa;
   mpz_inits(Z1Z1,Z2Z2,U1,U2,S1,S2,H,I,J,r,V,aa,NULL);
