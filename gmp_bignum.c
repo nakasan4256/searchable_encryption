@@ -126,7 +126,7 @@ void gmp_point_double(gmp_EC_POINT R,const gmp_EC_POINT P,const mpz_t p){
 }
 
 void gmp_point_add(gmp_EC_POINT R, const gmp_EC_POINT P, const gmp_EC_POINT Q, mpz_t p){
-  /*
+  
   if(!mpz_cmp_d(P->z,0)){
     mpz_set(R->x,Q->x);
     mpz_set(R->y,Q->y);
@@ -144,7 +144,7 @@ void gmp_point_add(gmp_EC_POINT R, const gmp_EC_POINT P, const gmp_EC_POINT Q, m
     gmp_point_double(R,P,p);
     return;
   }
-  */
+
   //y^2=x^3+7 mod p
   mpz_t Z1Z1,Z2Z2,U1,U2,S1,S2,H,I,J,r,V,aa;
   mpz_inits(Z1Z1,Z2Z2,U1,U2,S1,S2,H,I,J,r,V,aa,NULL);
