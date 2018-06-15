@@ -103,30 +103,34 @@ void gmp_point_double(gmp_EC_POINT R,const gmp_EC_POINT P,const mpz_t p){
   mpz_powm_ui(D,D,2,p);
   mpz_sub_mod(D,D,A,p);
   mpz_sub_mod(D,D,C,p);
-  mpz_mul_ui(D,D,2);
+  //mpz_mul_ui(D,D,2);
+  mpz_mul_2exp(D,D,1);
   mpz_mod(D,D,p);
 
   mpz_mul_ui(E,A,3);
   mpz_mod(E,E,p);
   mpz_powm_ui(F,E,2,p);
 
-  mpz_mul_ui(R->x,D,2);
+  //mpz_mul_ui(R->x,D,2);
+  mpz_mul_2exp(R->x,D,1);
   mpz_sub_mod(R->x,F,R->x,p);
 
   mpz_sub_mod(R->y,D,R->x,p);
   mpz_mul_mod(R->y,R->y,E,p);
-  mpz_mul_ui(C,C,8);
+  //mpz_mul_ui(C,C,8);
+  mpz_mul_2exp(C,C,3);
   mpz_mod(C,C,p);
   mpz_sub_mod(R->y,R->y,C,p);
 
-  mpz_mul_ui(R->z,P->y,2);
+  //mpz_mul_ui(R->z,P->y,2);
+  mpz_mul_2exp(R->z,P->y,1);
   mpz_mul_mod(R->z,R->z,P->z,p);
 
   mpz_clears(A,B,C,D,E,F,NULL);
 }
 
 void gmp_point_add(gmp_EC_POINT R, const gmp_EC_POINT P, const gmp_EC_POINT Q, mpz_t p){
-  
+
   if(!mpz_cmp_d(P->z,0)){
     mpz_set(R->x,Q->x);
     mpz_set(R->y,Q->y);
@@ -161,23 +165,27 @@ void gmp_point_add(gmp_EC_POINT R, const gmp_EC_POINT P, const gmp_EC_POINT Q, m
   mpz_mul_mod(S2,S2,Z1Z1,p);
 
   mpz_sub_mod(H,U2,U1,p);
-  mpz_mul_ui(I,H,2);
+  //mpz_mul_ui(I,H,2);
+  mpz_mul_2exp(I,H,1);
   mpz_powm_ui(I,I,2,p);
 
   mpz_mul_mod(J,H,I,p);
   mpz_sub_mod(r,S2,S1,p);
-  mpz_mul_ui(r,r,2);
+  //mpz_mul_ui(r,r,2);
+  mpz_mul_2exp(r,r,1);
   mpz_mod(r,r,p);
   mpz_mul_mod(V,U1,I,p);
 
   mpz_powm_ui(R->x,r,2,p);
   mpz_sub_mod(R->x,R->x,J,p);
-  mpz_mul_ui(aa,V,2);
+  //mpz_mul_ui(aa,V,2);
+  mpz_mul_2exp(aa,V,1);
   mpz_sub_mod(R->x,R->x,aa,p);
 
   mpz_sub_mod(R->y,V,R->x,p);
   mpz_mul_mod(R->y,R->y,r,p);
-  mpz_mul_ui(aa,S1,2);
+  //mpz_mul_ui(aa,S1,2);
+  mpz_mul_2exp(aa,S1,1);
   mpz_mul_mod(aa,aa,J,p);
   mpz_sub_mod(R->y,R->y,aa,p);
 
@@ -331,11 +339,11 @@ int main(){
   Z=EC_POINT_new(me_data->ec);
   BIGNUM *k;
   k=BN_new();
-  //BN_rand_range(k,me_data->order);
-  BN_set_word(k,1);
+  BN_rand_range(k,me_data->order);
+  //BN_set_word(k,1);
   EC_POINT_mul(me_data->ec,Y,k,NULL,NULL,ctx);
-  //BN_rand_range(k,me_data->order);
-  BN_set_word(k,2);
+  BN_rand_range(k,me_data->order);
+  //BN_set_word(k,2);
   EC_POINT_mul(me_data->ec,Z,k,NULL,NULL,ctx);
 
   BIGNUM *Y_co[3];
