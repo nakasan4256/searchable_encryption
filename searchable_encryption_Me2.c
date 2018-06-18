@@ -6,6 +6,7 @@
 #include<stdlib.h>
 #include<time.h>
 #include<omp.h>
+#include<gmp.h>
 #include<openssl/ec.h>
 #include<openssl/bn.h>
 #include<openssl/sha.h>
@@ -16,6 +17,7 @@ typedef struct//Me関数のためのデータ一式
   BIGNUM *a;
   BIGNUM *b;
   BIGNUM *p;//標数
+  mpz_t p_mpz;
   BIGNUM *order;//位数
   EC_POINT *Z;//Meスカラー倍の補助元
   int Z_sign;//補助元のsignの値
@@ -40,8 +42,9 @@ typedef struct//暗号化されたキーワード
   EC_POINT *B;
 } Peks[1];
 
-#define Me_data_init(me_data) do { me_data->ec=EC_GROUP_new_by_curve_name(714); me_data->a=BN_new(); me_data->b=BN_new(); me_data->p=BN_new(); me_data->order=BN_new(); me_data->Z=EC_POINT_new(me_data->ec); me_data->k=BN_new(); } while(0)
-#define Me_data_set(me_data) do { EC_GROUP_get_curve_GFp(me_data->ec,me_data->p,me_data->a,me_data->b,NULL); EC_GROUP_get_order(me_data->ec,me_data->order,NULL); } while(0)
+#define mpz_mul_mod(a,b,c,p) do { mpz_mul(a,b,c); mpz_mod(a,a,p); } while(0)
+#define Me_data_init(me_data) do { me_data->ec=EC_GROUP_new_by_curve_name(714); me_data->a=BN_new(); me_data->b=BN_new(); me_data->p=BN_new(); mpz_init(me_data->p_mpz); me_data->order=BN_new(); me_data->Z=EC_POINT_new(me_data->ec); me_data->k=BN_new(); } while(0)
+#define Me_data_set(me_data) do { EC_GROUP_get_curve_GFp(me_data->ec,me_data->p,me_data->a,me_data->b,NULL); char *str; str=BN_bn2hex(me_data->p); mpz_set_str(me_data->p_mpz,str,16); free(str); EC_GROUP_get_order(me_data->ec,me_data->order,NULL); } while(0)
 #define Me_data_set_Zk(me_data,Z,k) do { EC_POINT_copy(me_data->Z,Z); BN_copy(me_data->k,k); } while(0)
 #define Me_data_clear(me_data) do { EC_POINT_clear_free(me_data->Z); BN_clear_free(me_data->k); BN_clear_free(me_data->p); } while(0)
 #define public_key_init(pub,me_data) do { pub->P=EC_POINT_new(me_data->ec); pub->Q=EC_POINT_new(me_data->ec);} while(0)
@@ -141,7 +144,20 @@ int Sign(const Me_DATA me_data,const EC_POINT *P,BN_CTX *ctx){
   y0=BN_CTX_get(ctx);
   z0=BN_CTX_get(ctx);
   EC_POINT_get_Jprojective_coordinates_GFp(me_data->ec,P,NULL,y0,z0,ctx);
-  //EC_POINT_get_affine_coordinates_GFp(me_data->ec,P,NULL,y0,ctx);
+
+  //mpz_t Y0,Z0;
+  //mpz_inits(Y0,Z0,NULL);
+  //char *str_y,*str_z;
+  //str_y=BN_bn2hex(y0);
+  //str_z=BN_bn2hex(z0);
+  //mpz_set_str(Y0,str_y,16);
+  //mpz_set_str(Z0,str_z,16);
+  //mpz_mul_mod(Y0,Y0,Z0,me_data->p_mpz);
+  //int k=mpz_kronecker(Y0,me_data->p_mpz);
+  //free(str_y);
+  //free(str_z);
+  //mpz_clears(Y0,Z0,NULL);
+
   BN_mod_mul(y0,y0,z0,me_data->p,ctx);
   int k=BN_kronecker(y0,me_data->p,ctx);
   //int k=BN_is_bit_set(y0,0);
@@ -494,13 +510,13 @@ int main(void){
     EC_POINT_print(trapdoor->H,me_data);
     printf("           ");
     EC_POINT_print(trapdoor->Ha,me_data);
-    
+
     start=omp_get_wtime();
     for(i=0;i<5000;i++)
       trapdoor_create(trapdoor,private_key,word,me_data);
     end=omp_get_wtime();
     printf("trapdoor %f seconds\n",(end-start)/5000);
-    
+
     for(i=0;i<n;i++){
       printf("keyword[%d] : %s ",i,keyword[i]);
       start=omp_get_wtime();
