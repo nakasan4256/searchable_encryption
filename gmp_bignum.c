@@ -265,7 +265,7 @@ int main(){
   printf("openssl a*b mod p : %f seconds\n",(end-start));
 
   start=omp_get_wtime();
-  for(i=0;i<100000;i++){
+  for(i=0;i<1000000;i++){
     BN_mod_inverse(c,a,p,ctx);
   }
   end=omp_get_wtime();
@@ -273,6 +273,14 @@ int main(){
   BN_print_fp(stdout,c);
   puts("");
   printf("openssl inverse of a mod p : %f seconds\n",(end-start));
+
+  start=omp_get_wtime();
+  for(i=0;i<1000000;i++){
+    BN_kronecker(a,b,ctx);
+  }
+  end=omp_get_wtime();
+  printf("kronecker (A/B) : %d\n",BN_kronecker(a,b,ctx));
+  printf("openssl BN_kroneker : %f seconds\n",(end-start));
 
   BN_free(a);
   BN_free(b);
@@ -318,12 +326,20 @@ int main(){
   printf("gmp    a*b mod p : %f seconds\n",(end-start));
 
   start=omp_get_wtime();
-  for(i=0;i<100000;i++){
+  for(i=0;i<1000000;i++){
     mpz_invert(C,A,P);
   }
   end=omp_get_wtime();
   gmp_printf("inverse of a mod p : %ZX\n",C);
   printf("gmp   inverse of a mod p : %f seconds\n",(end-start));
+
+  start=omp_get_wtime();
+  for(i=0;i<1000000;i++){
+    mpz_kronecker(A,B);
+  }
+  end=omp_get_wtime();
+  printf("kronecker (A/B) : %d\n",mpz_kronecker(A,B));
+  printf("gmp mpz_kroneker : %f seconds\n",(end-start));
 
   mpz_clears(A,B,C,D,E,NULL);
 
@@ -355,9 +371,9 @@ int main(){
   EC_POINT_get_Jprojective_coordinates_GFp(me_data->ec,Y,Y_co[0],Y_co[1],Y_co[2],ctx);
   EC_POINT_get_Jprojective_coordinates_GFp(me_data->ec,Z,Z_co[0],Z_co[1],Z_co[2],ctx);
 
-  EC_POINT_print(Y,me_data,ctx);
-  EC_POINT_print(Z,me_data,ctx);
-  printf("-------------------------------------\n");
+  //EC_POINT_print(Y,me_data,ctx);
+  //EC_POINT_print(Z,me_data,ctx);
+  //printf("-------------------------------------\n");
 
   start=omp_get_wtime();
   for(i=0;i<1000000;i++){
@@ -403,9 +419,9 @@ int main(){
   mpz_set_str(gmp_Q->z,Za[2],16);
 
 
-  gmp_EC_POINT_print(gmp_P,gmp_p);
-  gmp_EC_POINT_print(gmp_Q,gmp_p);
-  printf("-------------------------------------\n");
+  //gmp_EC_POINT_print(gmp_P,gmp_p);
+  //gmp_EC_POINT_print(gmp_Q,gmp_p);
+  //printf("-------------------------------------\n");
 
   gmp_point_add(gmp_R,gmp_P,gmp_Q,gmp_p);
   start=omp_get_wtime();
