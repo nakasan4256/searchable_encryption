@@ -145,21 +145,21 @@ int Sign(const Me_DATA me_data,const EC_POINT *P,BN_CTX *ctx){
   z0=BN_CTX_get(ctx);
   EC_POINT_get_Jprojective_coordinates_GFp(me_data->ec,P,NULL,y0,z0,ctx);
 
-  //mpz_t Y0,Z0;
-  //mpz_inits(Y0,Z0,NULL);
-  //char *str_y,*str_z;
-  //str_y=BN_bn2hex(y0);
-  //str_z=BN_bn2hex(z0);
-  //mpz_set_str(Y0,str_y,16);
-  //mpz_set_str(Z0,str_z,16);
-  //mpz_mul_mod(Y0,Y0,Z0,me_data->p_mpz);
-  //int k=mpz_kronecker(Y0,me_data->p_mpz);
-  //free(str_y);
-  //free(str_z);
-  //mpz_clears(Y0,Z0,NULL);
+  mpz_t Y0,Z0;
+  mpz_inits(Y0,Z0,NULL);
+  char *str_y,*str_z;
+  str_y=BN_bn2hex(y0);
+  str_z=BN_bn2hex(z0);
+  mpz_set_str(Y0,str_y,16);
+  mpz_set_str(Z0,str_z,16);
+  mpz_mul_mod(Y0,Y0,Z0,me_data->p_mpz);
+  int k=mpz_kronecker(Y0,me_data->p_mpz);
+  free(str_y);
+  free(str_z);
+  mpz_clears(Y0,Z0,NULL);
 
-  BN_mod_mul(y0,y0,z0,me_data->p,ctx);
-  int k=BN_kronecker(y0,me_data->p,ctx);
+  //BN_mod_mul(y0,y0,z0,me_data->p,ctx);
+  //int k=BN_kronecker(y0,me_data->p,ctx);
   //int k=BN_is_bit_set(y0,0);
   BN_CTX_end(ctx);
   return k;
