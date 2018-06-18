@@ -200,7 +200,7 @@ void gmp_point_add(gmp_EC_POINT R, const gmp_EC_POINT P, const gmp_EC_POINT Q, m
 
 int main(){
   double start,end;
-  int i,len;
+  int i,len,kron;
 
   BN_CTX *ctx;
   ctx=BN_CTX_new();
@@ -276,10 +276,10 @@ int main(){
 
   start=omp_get_wtime();
   for(i=0;i<1000000;i++){
-    BN_kronecker(a,b,ctx);
+    kron=BN_kronecker(a,b,ctx);
   }
   end=omp_get_wtime();
-  printf("kronecker (A/B) : %d\n",BN_kronecker(a,b,ctx));
+  printf("kronecker (A/B) : %d\n",kron);
   printf("openssl BN_kroneker : %f seconds\n",(end-start));
 
   BN_free(a);
@@ -335,10 +335,10 @@ int main(){
 
   start=omp_get_wtime();
   for(i=0;i<1000000;i++){
-    mpz_kronecker(A,B);
+    kron=mpz_kronecker(A,B);
   }
   end=omp_get_wtime();
-  printf("kronecker (A/B) : %d\n",mpz_kronecker(A,B));
+  printf("kronecker (A/B) : %d\n",kron);
   printf("gmp mpz_kroneker : %f seconds\n",(end-start));
 
   mpz_clears(A,B,C,D,E,NULL);
