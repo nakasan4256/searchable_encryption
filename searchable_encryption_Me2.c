@@ -158,8 +158,6 @@ int Sign(const Me_DATA me_data,const EC_POINT *P,BN_CTX *ctx){
   free(str_z);
   mpz_clears(Y0,Z0,NULL);
 
-  //BN_mod_mul(y0,y0,z0,me_data->p,ctx);
-  //int k=BN_kronecker(y0,me_data->p,ctx);
   //int k=BN_is_bit_set(y0,0);
   BN_CTX_end(ctx);
   return k;
@@ -332,9 +330,9 @@ void public_key_create(Public_Key public_key,const BIGNUM *private_key,const EC_
 void hash1(EC_POINT *P,const unsigned char *keyword,const Me_DATA me_data){
   BN_CTX *ctx;
   ctx=BN_CTX_new();
-  BIGNUM *x0,*y0;
-  x0=BN_new();
-  y0=BN_new();
+  BIGNUM **x0,**y0;
+  *x0=BN_new();
+  *y0=BN_new();
 
 	unsigned char hash[SHA256_DIGEST_LENGTH];
 	SHA256(keyword,strlen(keyword),hash);
@@ -344,27 +342,44 @@ void hash1(EC_POINT *P,const unsigned char *keyword,const Me_DATA me_data){
 	}
 	printf("\n");
   */
-  BN_bin2bn(hash,32,x0);
-  //BN_print_fp(stdout,x0);
-  //puts("");
+  //BN_bin2bn(hash,32,x0);
+  mpz_t X0,Y0;
+  mpz_inits(X0,Y0,NULL);
+  mpz_set_str(X0,hash,16);
+
   do{
-    BN_add_word(x0,1);
-    BN_mod_sqr(y0,x0,me_data->p,ctx);
+    //BN_add_word(x0,1);
+    //BN_mod_sqr(y0,x0,me_data->p,ctx);
     //BN_mod_add(y0,y0,me_data->a,me_data->p,ctx);  //曲線を自由に選ぶとき用
-    BN_mod_mul(y0,y0,x0,me_data->p,ctx);
+    //BN_mod_mul(y0,y0,x0,me_data->p,ctx);
     //BN_mod_add(y0,y0,me_data->b,me_data->p,ctx);
-    BN_add_word(y0,7);
-  }while(BN_kronecker(y0,me_data->p,ctx)==-1);
-  BN_mod_sqrt(y0,y0,me_data->p,ctx);
-  EC_POINT_set_affine_coordinates_GFp(me_data->ec,P,x0,y0,ctx);
+    //BN_add_word(y0,7);
+
+    mpz_add_ui(X0,X0,1);
+    mpz_powm_ui(Y0,X0,3,me_data->p_mpz);
+    mpz_add_ui(Y0,Y0,7);
+  }while(/*BN_kronecker(y0,me_data->p,ctx)==-1*/
+mpz_kronecker(Y0,me_data->p_mpz)==-1);
+  //BN_mod_sqrt(y0,y0,me_data->p,ctx);
+  mpz_sqrt(Y0,Y0);
+  mpz_mod(Y0,Y0,me_data->p_mpz);
+  char *str_x,*str_y;
+  mpz_get_str(str_x,16,X0);
+  mpz_get_str(str_y,16,Y0);
+  BN_hex2bn(x0,str_x);
+  BN_hex2bn(y0,str_y);
+  free(str_x);
+  free(str_y);
+
+  EC_POINT_set_affine_coordinates_GFp(me_data->ec,P,*x0,*y0,ctx);
   /*
   BN_print_fp(stdout,x0);
   puts("");
   BN_print_fp(stdout,y0);
   puts("");
   */
-  BN_clear_free(x0);
-  BN_clear_free(y0);
+  BN_clear_free(*x0);
+  BN_clear_free(*y0);
   BN_CTX_free(ctx);
 }
 
