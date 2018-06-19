@@ -738,7 +738,7 @@ int main(void){
 
   start=omp_get_wtime();
   for(i=0;i<100000;i++)
-    test(peks[0],trapdoor,me_data);
+    test_bignum(peks[0],trapdoor,me_data);
   end=omp_get_wtime();
   printf("test bignum %f seconds\n",(end-start));
   printf("test bignum %f seconds\n",(end-start)/100000);
