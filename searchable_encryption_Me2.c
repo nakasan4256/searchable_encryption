@@ -17,7 +17,7 @@ typedef struct//Me関数のためのデータ一式
   BIGNUM *a;
   BIGNUM *b;
   BIGNUM *p;//標数
-  mpz_t p_mpz;
+  mpz_t p_mpz;//標数 mpz_t版
   BIGNUM *order;//位数
   EC_POINT *Z;//Meスカラー倍の補助元
   int Z_sign;//補助元のsignの値
@@ -354,7 +354,7 @@ void hash1(EC_POINT *P,const unsigned char *keyword,const Me_DATA me_data){
     BN_mod_mul(y0,y0,x0,me_data->p,ctx);
     //BN_mod_add(y0,y0,me_data->b,me_data->p,ctx);
     BN_add_word(y0,7);
-  }while(BN_kronecker(y0,me_data->p,ctx)==-1);
+  }while(BN_kronecker(y0,me_data->p,ctx)<1);
   BN_mod_sqrt(y0,y0,me_data->p,ctx);
   EC_POINT_set_affine_coordinates_GFp(me_data->ec,P,x0,y0,ctx);
   /*
@@ -468,10 +468,11 @@ int main(void){
   EC_POINT_print(public_key->Q,me_data);
   printf("------------------------------------\n");
   start=omp_get_wtime();
-  for(i=0;i<5000;i++)
+  for(i=0;i<100000;i++)
      public_key_create(public_key,private_key,P,me_data);
   end=omp_get_wtime();
-  printf("public %f seconds\n",(end-start)/5000);
+  printf("public %f seconds\n",(end-start));
+  printf("public %f seconds\n",(end-start)/100000);
 
 
   unsigned char keyword[n][32];
@@ -493,10 +494,11 @@ int main(void){
     EC_POINT_print(peks[i]->B,me_data);
   }
   start=omp_get_wtime();
-  for(i=0;i<5000;i++)
+  for(i=0;i<100000;i++)
     keyword_encrypt(peks[0],keyword[0],public_key,me_data);
   end=omp_get_wtime();
-  printf("encrypt %f seconds\n",(end-start)/5000);
+  printf("encrypt %f seconds\n",(end-start));
+  printf("encrypt %f seconds\n",(end-start)/100000);
 
   while(1){
     unsigned char word[32];
@@ -512,10 +514,11 @@ int main(void){
     EC_POINT_print(trapdoor->Ha,me_data);
 
     start=omp_get_wtime();
-    for(i=0;i<5000;i++)
+    for(i=0;i<100000;i++)
       trapdoor_create(trapdoor,private_key,word,me_data);
     end=omp_get_wtime();
-    printf("trapdoor %f seconds\n",(end-start)/5000);
+    printf("trapdoor %f seconds\n",(end-start));
+    printf("trapdoor %f seconds\n",(end-start)/100000);
 
     for(i=0;i<n;i++){
       printf("keyword[%d] : %s ",i,keyword[i]);
@@ -531,10 +534,11 @@ int main(void){
     }
 
   start=omp_get_wtime();
-  for(i=0;i<5000;i++)
+  for(i=0;i<100000;i++)
     test(peks[0],trapdoor,me_data);
   end=omp_get_wtime();
-  printf("test %f seconds\n",(end-start)/5000);
+  printf("test %f seconds\n",(end-start));
+  printf("test %f seconds\n",(end-start)/100000);
 
   }
 
