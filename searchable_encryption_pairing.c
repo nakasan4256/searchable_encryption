@@ -189,7 +189,7 @@ int main(void){
     printf("test : %f seconds\n",(end-start));
     printf("test : %f seconds\n",(end-start)/100000);
   }
-  
+
 /*
   EC_POINT trapdoor;
   point_init(trapdoor,pair->g1);
