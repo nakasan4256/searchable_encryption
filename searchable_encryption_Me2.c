@@ -515,6 +515,10 @@ void keyword_encrypt(Peks peks,const unsigned char *keyword,const Public_Key pub
 
   Me_mul_1(peks->A,public_key->P,r,me_data);
   hash1(peks->B,keyword,me_data);
+  EC_POINT_copy(C1,peks->A);
+  EC_POINT_invert(me_data->ec,C1,ctx);
+  EC_POINT_add(me_data->ec,C1,peks->B,C1,ctx);
+  printf("sign (h(w)-Pr,z) = %d\n",Sign(me_data,C1,ctx));
   Me(peks->B,peks->B,peks->A,me_data,ctx);
   Me_mul_1(C1,public_key->Q,r,me_data);
   EC_POINT_add(me_data->ec,peks->B,peks->B,C1,ctx);
@@ -643,14 +647,14 @@ int main(void){
   EC_POINT_print(public_key->Q,me_data);
   printf("------------------------------------\n");
   start=omp_get_wtime();
-  for(i=0;i<100000;i++)
+  for(i=0;i<100;i++)
      public_key_create(public_key,private_key,P,me_data);
   end=omp_get_wtime();
   printf("public gmp %f seconds\n",(end-start));
   printf("public gmp %f seconds\n",(end-start)/100000);
 
   start=omp_get_wtime();
-  for(i=0;i<100000;i++)
+  for(i=0;i<100;i++)
      public_key_create_bignum(public_key,private_key,P,me_data);
   end=omp_get_wtime();
   printf("public bignum %f seconds\n",(end-start));
@@ -675,14 +679,14 @@ int main(void){
     EC_POINT_print(peks[i]->B,me_data);
   }
   start=omp_get_wtime();
-  for(i=0;i<100000;i++)
+  for(i=0;i<100;i++)
     keyword_encrypt(peks[0],keyword[0],public_key,me_data);
   end=omp_get_wtime();
   printf("encrypt gmp %f seconds\n",(end-start));
   printf("encrypt gmp %f seconds\n",(end-start)/100000);
 
   start=omp_get_wtime();
-  for(i=0;i<100000;i++)
+  for(i=0;i<100;i++)
     keyword_encrypt_bignum(peks[0],keyword[0],public_key,me_data);
   end=omp_get_wtime();
   printf("encrypt bignum %f seconds\n",(end-start));
@@ -703,14 +707,14 @@ int main(void){
     EC_POINT_print(trapdoor->Ha,me_data);
 
     start=omp_get_wtime();
-    for(i=0;i<100000;i++)
+    for(i=0;i<100;i++)
       trapdoor_create(trapdoor,private_key,word,me_data);
     end=omp_get_wtime();
     printf("trapdoor gmp %f seconds\n",(end-start));
     printf("trapdoor gmp %f seconds\n",(end-start)/100000);
 
     start=omp_get_wtime();
-    for(i=0;i<100000;i++)
+    for(i=0;i<100;i++)
       trapdoor_create_bignum(trapdoor,private_key,word,me_data);
     end=omp_get_wtime();
     printf("trapdoor bignum %f seconds\n",(end-start));
@@ -730,15 +734,15 @@ int main(void){
     }
 
   start=omp_get_wtime();
-  for(i=0;i<100000;i++)
+  for(i=0;i<100;i++)
     test(peks[0],trapdoor,me_data);
   end=omp_get_wtime();
   printf("test gmp %f seconds\n",(end-start));
   printf("test gmp %f seconds\n",(end-start)/100000);
 
   start=omp_get_wtime();
-  for(i=0;i<100000;i++)
-    test_bignum(peks[0],trapdoor,me_data);
+  for(i=0;i<100;i++)
+    test(peks[0],trapdoor,me_data);
   end=omp_get_wtime();
   printf("test bignum %f seconds\n",(end-start));
   printf("test bignum %f seconds\n",(end-start)/100000);
