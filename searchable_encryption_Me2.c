@@ -646,7 +646,8 @@ int main(void){
   Me_mul_1(PP,PP,private_key,me_data);
   printf("(rP)r,z : ");
   EC_POINT_print(PP,me_data);
-  Me_mul_1(PP,P,private_key,me_data);
+  EC_POINT_copy(PP,P);
+  Me_mul_1(PP,PP,private_key,me_data);
   EC_POINT_mul(me_data->ec,PP,NULL,PP,private_key,ctx);
   printf("r(Pr,z) : ");
   EC_POINT_print(PP,me_data);
