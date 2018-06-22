@@ -641,14 +641,14 @@ int main(void){
   puts("");
 
   EC_POINT *PP;
-  PP=EC_POINT_new();
+  PP=EC_POINT_new(me_data->ec);
   EC_POINT_mul(me_data->ec,PP,private_key,NULL,NULL,ctx);
   Me_mul_1(PP,PP,private_key,me_data);
-  printf("(rP)r,z : ")
+  printf("(rP)r,z : ");
   EC_POINT_print(PP,me_data);
   Me_mul_1(PP,P,private_key,me_data);
   EC_POINT_mul(me_data->ec,PP,NULL,PP,private_key,ctx);
-  printf("r(Pr,z) : ")
+  printf("r(Pr,z) : ");
   EC_POINT_print(PP,me_data);
 
   public_key_create(public_key,private_key,P,me_data);
