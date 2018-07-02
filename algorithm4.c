@@ -31,9 +31,31 @@ typedef struct
   BIGNUM *k;
 }Me_instance[1];
 
+#define mpz_mul_mod(a,b,c,p) do { mpz_mul(a,b,c); mpz_mod(a,a,p); } while(0)
+#define Me_data_init(me_data) do { me_data->ec=EC_GROUP_new_by_curve_name(714); me_data->a=BN_new(); me_data->b=BN_new(); me_data->p=BN_new(); mpz_init(me_data->p_mpz); me_data->order=BN_new(); me_data->z=BN_new(); me_data->Z=EC_POINT_new(me_data->ec); me_data->k=BN_new(); } while(0)
+#define Me_data_set(me_data) do { EC_GROUP_get_curve_GFp(me_data->ec,me_data->p,me_data->a,me_data->b,NULL); char *str; str=BN_bn2hex(me_data->p); mpz_set_str(me_data->p_mpz,str,16); free(str); EC_GROUP_get_order(me_data->ec,me_data->order,NULL); } while(0)
+#define Me_data_set_Zk(me_data,Z,z,k) do { EC_POINT_copy(me_data->Z,Z); BN_copy(me_data->z,z); BN_copy(me_data->k,k); } while(0)
+#define Me_data_clear(me_data) do { EC_POINT_clear_free(me_data->Z); BN_clear_free(me_data->k); BN_clear_free(me_data->p); } while(0)
 #define Me_inst_init(inst,me_data) do { inst->P=EC_POINT_new(me_data->ec); inst->k=BN_new();} while(0)
 #define Me_inst_set(inst,A,B) do { EC_POINT_copy(inst->P,A); BN_copy(inst->k,B);} while(0)
 #define Me_inst_clear(inst) do { EC_POINT_clear_free(inst->P); BN_clear_free(inst->k);} while(0)
+
+void EC_POINT_print(const EC_POINT *P,const Me_DATA me_data,BN_CTX *ctx){
+  BIGNUM *Px,*Py;
+  Px=BN_new();
+  Py=BN_new();
+  EC_POINT_get_affine_coordinates_GFp(me_data->ec,P,Px,Py,ctx);
+
+  fprintf(stdout,"[ ");
+  BN_print_fp(stdout,Px);
+  fprintf(stdout," , ");
+  BN_print_fp(stdout,Py);
+  fprintf(stdout," ]");
+  puts("");
+
+  BN_clear_free(Px);
+  BN_clear_free(Py);
+}
 
 int Sign(const Me_DATA me_data,const EC_POINT *P,BN_CTX *ctx){
   BIGNUM *y0,*z0;
@@ -229,6 +251,7 @@ void Me_P_Q(Me_instance R,const Me_instance P,const Me_instance Q,const Me_DATA 
     BN_copy(C,P->k);
     BN_mul_word(C,2);
     BN_sub(C,C,Q->k);
+    Me_inst_set(R,A,C);
   }else{
     EC_POINT_dbl(me_data->ec,A,Q->P,ctx);
     EC_POINT_copy(B,P->P);
@@ -238,6 +261,7 @@ void Me_P_Q(Me_instance R,const Me_instance P,const Me_instance Q,const Me_DATA 
     BN_copy(C,Q->k);
     BN_mul_word(C,2);
     BN_sub(C,C,P->k);
+    Me_inst_set(R,A,C);
   }
 
   EC_POINT_clear_free(A);
@@ -248,13 +272,13 @@ void Me_P_Q(Me_instance R,const Me_instance P,const Me_instance Q,const Me_DATA 
 
 void Me_mul_algo(Me_instance ins,const EC_POINT *P,const BIGNUM *n,const Me_DATA me_data){
   Me_instance PP,ZZ,YY,ZZYY;
-  Me_inst_init(PP);
-  Me_inst_init(ZZ);
-  Me_inst_init(YY);
-  Me_inst_init(ZZYY);
-  Me_inst_set(PP,P,BN_value_one);
+  Me_inst_init(PP,me_data);
+  Me_inst_init(ZZ,me_data);
+  Me_inst_init(YY,me_data);
+  Me_inst_init(ZZYY,me_data);
+  Me_inst_set(PP,P,BN_value_one());
   Me_inst_set(ZZ,me_data->Z,me_data->z);
-  Me_inst_set(YY,P,BN_value_one);
+  Me_inst_set(YY,P,BN_value_one());
 
   int i,len;
   len=BN_num_bits(n);
@@ -284,15 +308,70 @@ int main(){
   Me_data_init(me_data);
   Me_data_set(me_data);
 
-  EC_POINT *P,*Z;
+  EC_POINT *P,*Z,*Q,*R,*S;
   P=EC_POINT_new(me_data->ec);
   Z=EC_POINT_new(me_data->ec);
-  BIGNUM *a,*z;
+  Q=EC_POINT_new(me_data->ec);
+  R=EC_POINT_new(me_data->ec);
+  S=EC_POINT_new(me_data->ec);
+  BIGNUM *a,*z,*k,*r;
   a=BN_new();
   z=BN_new();
+  k=BN_new();
+  r=BN_new();
+
+  Me_instance ins;
+  Me_inst_init(ins,me_data);
 
   //テストかく
+  BN_rand_range(a,me_data->order);
+  BN_rand_range(z,me_data->order);
+  BN_set_word(k,2);
+  EC_POINT_mul(me_data->ec,Z,z,NULL,NULL,ctx);
+  Me_data_set_Zk(me_data,Z,z,k);
+  me_data->Z_sign=Sign(me_data,Z,ctx);
+  P=EC_GROUP_get0_generator(me_data->ec);
+  printf("a : ");
+  BN_print_fp(stdout,a);
+  puts("");
+  printf("z : ");
+  BN_print_fp(stdout,z);
+  puts("");
+  printf("Z : ");
+  EC_POINT_print(Z,me_data,ctx);
+  printf("P : ");
+  EC_POINT_print(P,me_data,ctx);
+  printf("---------------------------------\n");
 
+  //culculate Pa,z
+  Me_mul_1(Q,P,a,me_data);
+  printf("Pa,z = Q : ");
+  EC_POINT_print(Q,me_data,ctx);
+  printf("---------------------------------\n");
 
+  Me_mul_algo(ins,P,a,me_data);
+  printf("ins[0] : ");
+  EC_POINT_print(ins->P,me_data,ctx);
+  printf("ins[1] : ");
+  BN_print_fp(stdout,ins->k);
+  puts("");
+
+  EC_POINT_mul(me_data->ec,R,ins->k,NULL,NULL,ctx);
+  printf("t*P : ");
+  EC_POINT_print(R,me_data,ctx);
+  printf("---------------------------------\n");
+
+  BN_rand_range(r,me_data->order);
+  EC_POINT_mul(me_data->ec,R,r,NULL,NULL,ctx);
+  printf("R : ");
+  EC_POINT_print(R,me_data,ctx);
+
+  Me_mul_1(S,R,a,me_data);
+  printf("Ra,z : ");
+  EC_POINT_print(S,me_data,ctx);
+
+  EC_POINT_mul(me_data->ec,S,NULL,R,ins->k,ctx);
+  printf("t*R : ");
+  EC_POINT_print(S,me_data,ctx);
   BN_CTX_free(ctx);
 }

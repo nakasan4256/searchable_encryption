@@ -640,19 +640,6 @@ int main(void){
   BN_print_fp(stdout,private_key);
   puts("");
 
-
-  EC_POINT *PP;
-  PP=EC_POINT_new(me_data->ec);
-  EC_POINT_mul(me_data->ec,PP,private_key,NULL,NULL,ctx);
-  Me_mul_1(PP,PP,private_key,me_data);
-  printf("(rP)r,z : ");
-  EC_POINT_print(PP,me_data);
-  EC_POINT_copy(PP,P);
-  Me_mul_1(PP,PP,private_key,me_data);
-  EC_POINT_mul(me_data->ec,PP,NULL,PP,private_key,ctx);
-  printf("r(Pr,z) : ");
-  EC_POINT_print(PP,me_data);
-
   public_key_create(public_key,private_key,P,me_data);
   printf("public_key : P ");
   EC_POINT_print(public_key->P,me_data);
