@@ -209,6 +209,32 @@ void Me_mul_1(EC_POINT *R, const EC_POINT *P,const BIGNUM *n,const Me_DATA me_da
   //free(str);
 }
 
+void Me_mul_2(EC_POINT *R, const EC_POINT *P,const BIGNUM *n,const Me_DATA me_data){
+  BN_CTX *ctx;
+  ctx=BN_CTX_new();
+
+  EC_POINT *Y,*ZY;
+  Y=EC_POINT_new(me_data->ec);
+  ZY=EC_POINT_new(me_data->ec);
+
+  int i,len;
+  len=BN_num_bits(n);
+  EC_POINT_copy(Y,P);
+  for(i=len-2;i>=0;i--){
+    Me(ZY,me_data->Z,Y,me_data,ctx);
+    Me(Y,ZY,Y,me_data,ctx);
+    if(BN_is_bit_set(n,i)){
+      Me(Y,Y,P,me_data,ctx);
+    }
+  }
+  EC_POINT_copy(R,Y);
+
+  EC_POINT_clear_free(Y);
+  EC_POINT_clear_free(ZY);
+  BN_CTX_free(ctx);
+  //free(str);
+}
+
 void P_Q(Me_instance R,const Me_instance P,const Me_instance Q,const Me_DATA me_data){
   BN_CTX *ctx;
   ctx=BN_CTX_new();
@@ -297,6 +323,33 @@ void Me_mul_algo(Me_instance ins,const EC_POINT *P,const BIGNUM *n,const Me_DATA
   Me_inst_clear(ZZYY);
 }
 
+void Me_mul_2_algo(Me_instance ins,const EC_POINT *P,const BIGNUM *n,const Me_DATA me_data){
+  Me_instance PP,ZZ,YY,ZZYY;
+  Me_inst_init(PP,me_data);
+  Me_inst_init(ZZ,me_data);
+  Me_inst_init(YY,me_data);
+  Me_inst_init(ZZYY,me_data);
+  Me_inst_set(PP,P,BN_value_one());
+  Me_inst_set(ZZ,me_data->Z,me_data->z);
+  Me_inst_set(YY,P,BN_value_one());
+
+  int i,len;
+  len=BN_num_bits(n);
+  for(i=len-2;i>=0;i--){
+    Me_P_Q(ZZYY,ZZ,YY,me_data);
+    Me_P_Q(YY,ZZYY,YY,me_data);
+    if(BN_is_bit_set(n,i)){
+      Me_P_Q(YY,YY,PP,me_data);
+    }
+  }
+  Me_inst_set(ins,YY->P,YY->k);
+
+  Me_inst_clear(PP);
+  Me_inst_clear(ZZ);
+  Me_inst_clear(YY);
+  Me_inst_clear(ZZYY);
+}
+
 int main(){
   int i,n=5;
   double start,end;
@@ -344,12 +397,12 @@ int main(){
   printf("---------------------------------\n");
 
   //culculate Pa,z
-  Me_mul_1(Q,P,a,me_data);
+  Me_mul_2(Q,P,a,me_data);
   printf("Pa,z = Q : ");
   EC_POINT_print(Q,me_data,ctx);
   printf("---------------------------------\n");
 
-  Me_mul_algo(ins,P,a,me_data);
+  Me_mul_2_algo(ins,P,a,me_data);
   printf("ins[0] : ");
   EC_POINT_print(ins->P,me_data,ctx);
   printf("ins[1] : ");
@@ -366,7 +419,7 @@ int main(){
   printf("R : ");
   EC_POINT_print(R,me_data,ctx);
 
-  Me_mul_1(S,R,a,me_data);
+  Me_mul_2(S,R,a,me_data);
   printf("Ra,z : ");
   EC_POINT_print(S,me_data,ctx);
 
