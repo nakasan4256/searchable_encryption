@@ -211,8 +211,9 @@ void Me_mul_rtol(EC_POINT *R, const EC_POINT *P,const BIGNUM *n,const Me_DATA me
 
   int i,len;
   len=BN_num_bits(n);
-  EC_POINT_set_to_infinity(me_data->ec,R);
-  EC_POINT_copy(R,P);
+  //EC_POINT_set_to_infinity(me_data->ec,RR);
+  EC_POINT_copy(RR,P);
+  EC_POINT_copy(S,P);
   for(i=0;i<len-1;i++){
     if(BN_is_bit_set(n,i)){
       Me(RR,RR,S,me_data,ctx);
@@ -359,6 +360,9 @@ int main(){
   EC_POINT_add(me_data->ec,R,P,D,ctx);
   printf("P + Qa,z← : ");
   EC_POINT_print(R,me_data,ctx);
+  printf("---------------------------------\n");
+
+
 
   return 0;
 }
