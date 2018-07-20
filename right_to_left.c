@@ -212,7 +212,7 @@ void Me_mul_rtol(EC_POINT *R, const EC_POINT *P,const BIGNUM *n,const Me_DATA me
   int i,len;
   len=BN_num_bits(n);
   EC_POINT_set_to_infinity(me_data->ec,R);
-  EC_POINT_copy(S,P);
+  EC_POINT_copy(R,P);
   for(i=0;i<len-1;i++){
     if(BN_is_bit_set(n,i)){
       Me(RR,RR,S,me_data,ctx);
@@ -288,14 +288,18 @@ int main(){
   Me_data_init(me_data);
   Me_data_set(me_data);
 
-  EC_POINT *P,*Z,*Q,*R,*S;
+  EC_POINT *P,*Z,*Q,*R,*A,*B,*C,*D;
   P=EC_POINT_new(me_data->ec);//ベースポイント
   Z=EC_POINT_new(me_data->ec);//補助元Z=z*P
-  Q=EC_POINT_new(me_data->ec);
+  Q=EC_POINT_new(me_data->ec);//2つ目の点
   R=EC_POINT_new(me_data->ec);
-  S=EC_POINT_new(me_data->ec);
-  BIGNUM *a,*z,*k,*r;
+  A=EC_POINT_new(me_data->ec);
+  B=EC_POINT_new(me_data->ec);
+  C=EC_POINT_new(me_data->ec);
+  D=EC_POINT_new(me_data->ec);
+  BIGNUM *a,*b,*z,*k,*r;
   a=BN_new();//秘密鍵
+  b=BN_new();
   z=BN_new();//補助元
   k=BN_new();
   r=BN_new();
@@ -303,10 +307,13 @@ int main(){
   BN_rand_range(a,me_data->order);
   BN_rand_range(z,me_data->order);
   BN_set_word(k,2);
-  EC_POINT_mul(me_data->ec,Z,z,NULL,NULL,ctx);
+  EC_POINT_mul(me_data->ec,Z,z,NULL,NULL,ctx);//Z=z*P
   Me_data_set_Zk(me_data,Z,z,k);
   me_data->Z_sign=Sign(me_data,Z,ctx);
   P=EC_GROUP_get0_generator(me_data->ec);
+  BN_rand_range(b,me_data->order);
+  EC_POINT_mul(me_data->ec,Q,b,NULL,NULL,ctx);//Q=b*P
+
   printf("a : ");
   BN_print_fp(stdout,a);
   puts("");
@@ -317,16 +324,41 @@ int main(){
   EC_POINT_print(Z,me_data,ctx);
   printf("P : ");
   EC_POINT_print(P,me_data,ctx);
+  printf("Q : ");
+  EC_POINT_print(Q,me_data,ctx);
   printf("---------------------------------\n");
 
   //culculate Pa,z
-  Me_mul_1(Q,P,a,me_data);
-  printf("Pa,z→ = Q : ");
-  EC_POINT_print(Q,me_data,ctx);
-  Me_mul_rtol(R,P,a,me_data);
-  printf("Pa,z← = R : ");
-  EC_POINT_print(R,me_data,ctx);
+  Me_mul_1(A,P,a,me_data);
+  printf("Pa,z→ = A : ");
+  EC_POINT_print(A,me_data,ctx);
+
+  Me_mul_1(B,Q,a,me_data);
+  printf("Qa,z→ = B : ");
+  EC_POINT_print(B,me_data,ctx);
+
+  Me_mul_rtol(C,P,a,me_data);
+  printf("Pa,z← = C : ");
+  EC_POINT_print(C,me_data,ctx);
+
+  Me_mul_rtol(D,Q,a,me_data);
+  printf("Qa,z← = D : ");
+  EC_POINT_print(D,me_data,ctx);
   printf("---------------------------------\n");
+
+  EC_POINT_add(me_data->ec,R,A,Q,ctx);
+  printf("Pa,z→ + Q : ");
+  EC_POINT_print(R,me_data,ctx);
+  EC_POINT_add(me_data->ec,R,P,B,ctx);
+  printf("P + Qa,z→ : ");
+  EC_POINT_print(R,me_data,ctx);
+
+  EC_POINT_add(me_data->ec,R,C,Q,ctx);
+  printf("Pa,z← + Q : ");
+  EC_POINT_print(R,me_data,ctx);
+  EC_POINT_add(me_data->ec,R,P,D,ctx);
+  printf("P + Qa,z← : ");
+  EC_POINT_print(R,me_data,ctx);
 
   return 0;
 }
