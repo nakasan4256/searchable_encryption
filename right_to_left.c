@@ -211,15 +211,15 @@ void Me_mul_rtol(EC_POINT *R, const EC_POINT *P,const BIGNUM *n,const Me_DATA me
 
   int i,len;
   len=BN_num_bits(n);
-  //EC_POINT_set_to_infinity(me_data->ec,RR);
   EC_POINT_copy(RR,P);
-  EC_POINT_copy(S,P);
+  EC_POINT_add(me_data->ec,S,P,me_data->Z,ctx);
+  //Me(S,P,me_data->Z,me_data,ctx);
   for(i=0;i<len-1;i++){
     if(BN_is_bit_set(n,i)){
       Me(RR,RR,S,me_data,ctx);
     }
     EC_POINT_add(me_data->ec,ZS,me_data->Z,S,ctx);
-    Me_Z(S,ZS,S,me_data,ctx);
+    Me(S,ZS,S,me_data,ctx);
   }
   EC_POINT_copy(R,RR);
 
@@ -353,12 +353,20 @@ int main(){
   EC_POINT_add(me_data->ec,R,P,B,ctx);
   printf("P + Qa,z→ : ");
   EC_POINT_print(R,me_data,ctx);
+  EC_POINT_add(me_data->ec,R,P,Q,ctx);
+  Me_mul_1(R,R,a,me_data);
+  printf("(P+Q)a,z→ : ");
+  EC_POINT_print(R,me_data,ctx);
 
   EC_POINT_add(me_data->ec,R,C,Q,ctx);
   printf("Pa,z← + Q : ");
   EC_POINT_print(R,me_data,ctx);
   EC_POINT_add(me_data->ec,R,P,D,ctx);
   printf("P + Qa,z← : ");
+  EC_POINT_print(R,me_data,ctx);
+  EC_POINT_add(me_data->ec,R,P,Q,ctx);
+  Me_mul_rtol(R,R,a,me_data);
+  printf("(P+Q)a,z← : ");
   EC_POINT_print(R,me_data,ctx);
   printf("---------------------------------\n");
 
