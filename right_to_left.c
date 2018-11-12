@@ -276,12 +276,12 @@ int main(){
 
   int i,n=5;
   double start,end;
-  /*start=omp_get_wtime();
+  start=omp_get_wtime();
   for(i=0;i<5000;i++)
     keyword_encrypt(peks[0],keyword[0],public_key,me_data);
   end=omp_get_wtime();
   printf("encrypt %f seconds\n",(end-start)/5000);
-  */
+
   BN_CTX *ctx;
   ctx=BN_CTX_new();
 
