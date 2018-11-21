@@ -38,7 +38,8 @@ typedef struct//trapdoor
 typedef struct//暗号化されたキーワード
 {
   EC_POINT *A;
-  unsigned char B[SHA256_DIGEST_LENGTH];
+  EC_POINT *B;
+  unsigned char C[SHA256_DIGEST_LENGTH];
 } Peks[1];
 
 #define mpz_mul_mod(a,b,c,p) do { mpz_mul(a,b,c); mpz_mod(a,a,p); } while(0)
@@ -50,7 +51,7 @@ typedef struct//暗号化されたキーワード
 #define public_key_clear(pub) do { EC_POINT_clear_free(pub->P); EC_POINT_clear_free(pub->Q);} while(0)
 #define trapdoor_init(trapdoor,me_data) do { trapdoor->H=EC_POINT_new(me_data->ec);} while(0)
 #define trapdoor_clear(trapdoor) do { EC_POINT_clear_free(trapdoor->H);} while(0)
-#define peks_init(peks,me_data) do { peks->A=EC_POINT_new(me_data->ec);} while(0)
+#define peks_init(peks,me_data) do { peks->A=EC_POINT_new(me_data->ec);peks->B=EC_POINT_new(me_data->ec);} while(0)
 #define peks_clear(peks) do { EC_POINT_clear_free(peks->A);} while(0)
 
 void EC_POINT_print(const EC_POINT *P,const Me_DATA me_data){
@@ -530,24 +531,33 @@ void keyword_encrypt(Peks peks,const unsigned char *keyword,const Public_Key pub
   EC_POINT *C2;
   C1=EC_POINT_new(me_data->ec);
   C2=EC_POINT_new(me_data->ec);
-
-  EC_POINT_copy(C2,public_key->P);
-  EC_POINT_invert(me_data->ec,C2,ctx);
+  unsigned char *a=NULL;
+  int len;
+  //EC_POINT_copy(C2,public_key->P);
+  //EC_POINT_invert(me_data->ec,C2,ctx);
   BN_rand_range(r,me_data->order);
 
   Me_mul_1(peks->A,public_key->P,r,me_data);
   hash1(C1,keyword,me_data);
-  EC_POINT_add(me_data->ec,C1,C1,peks->A,ctx);
-  EC_POINT_add(me_data->ec,C1,C1,public_key->Q,ctx);
-  EC_POINT_add(me_data->ec,C1,C1,C2,ctx);
-  SHA256(C1,strlen(C1),peks->B);
+  Me_mul_1(C2,public_key->Q,r,me_data);
+  EC_POINT_add(me_data->ec,peks->B,C1,C2,ctx);
 
+  EC_POINT_get_affine_coordinates_GFp(me_data->ec,peks->B,r,NULL,ctx);
+
+  len = BN_num_bytes(r);
+  a = (unsigned char *)malloc(len);
+  len = BN_bn2bin(r, a);
+  printf("%s\n",a);
+  free(a);
   EC_POINT_clear_free(C1);
   EC_POINT_clear_free(C2);
   BN_clear_free(r);
   BN_CTX_free(ctx);
+
+
 }
 
+/*
 void keyword_encrypt_bignum(Peks peks,const unsigned char *keyword,const Public_Key public_key,const Me_DATA me_data){
   BN_CTX *ctx;
   ctx=BN_CTX_new();
@@ -567,20 +577,41 @@ void keyword_encrypt_bignum(Peks peks,const unsigned char *keyword,const Public_
   EC_POINT_clear_free(C1);
   BN_clear_free(r);
   BN_CTX_free(ctx);
-}
+}*/
 
 int test(const Peks peks,const Trapdoor trapdoor,const Me_DATA me_data){
   BN_CTX *ctx;
   ctx=BN_CTX_new();
   EC_POINT *check;
+  BIGNUM *x0;
   check=EC_POINT_new(me_data->ec);
-  unsigned char hash[SHA256_DIGEST_LENGTH];
+  x0=BN_new();
+  int len;
+  unsigned char *a=NULL;
+  unsigned char *a2=NULL;
 
   EC_POINT_add(me_data->ec,check,peks->A,trapdoor->H,ctx);
-  SHA256(check,strlen(check),hash);
-  int k=strcmp(hash,peks->B);
+
+  EC_POINT_get_affine_coordinates_GFp(me_data->ec,check,x0,NULL,ctx);
+  len = BN_num_bytes(x0);
+  a = (unsigned char *)malloc(len);
+  len = BN_bn2bin(x0, a);
+  printf("T+C_1 : %s\n",a);
+
+  EC_POINT_get_affine_coordinates_GFp(me_data->ec,peks->B,x0,NULL,ctx);
+  len = BN_num_bytes(x0);
+  a2 = (unsigned char *)malloc(len);
+  len = BN_bn2bin(x0, a2);
+  printf("C_2   : %s\n",a2);
+
+  //int k=strcmp(hash,peks->B);
+
+  int k=EC_POINT_cmp(me_data->ec,check,peks->B,ctx);
   EC_POINT_clear_free(check);
+  BN_clear_free(x0);
   BN_CTX_free(ctx);
+  free(a);
+  free(a2);
   return k;
 }
 
@@ -609,8 +640,8 @@ int test(const Peks peks,const Trapdoor trapdoor,const Me_DATA me_data){
 }*/
 
 int main(void){
-  int i,j,n=10;//テスト用キーワードの個数
-  int count=100;//テスト実行回数
+  int i,j,n=3;//テスト用キーワードの個数
+  int count=0;//テスト実行回数
   FILE *outputfile;
   outputfile = fopen("d.txt", "w");
   if (outputfile == NULL) {
@@ -652,6 +683,22 @@ int main(void){
   Me_data_set_Zk(me_data,Z,k);
   me_data->Z_sign=Sign(me_data,Z,ctx);
   P=EC_GROUP_get0_generator(me_data->ec);
+
+  EC_POINT_get_affine_coordinates_GFp(me_data->ec,P,k,NULL,ctx);
+
+  unsigned char hash[SHA256_DIGEST_LENGTH];
+  char *a;
+  int len = BN_num_bytes(k);            /* バイト数取り出し */
+  a = (unsigned char *)malloc(len); /* 領域確保         */
+  len = BN_bn2bin(k, a);
+  SHA256(a,strlen(a),hash);
+  for ( size_t i = 0; i < SHA256_DIGEST_LENGTH; i++ )
+    {
+      printf("%02x", hash[i] );
+    }
+    printf("\n");
+
+
 
   fprintf(outputfile,"テスト回数：%d\n",count);
   fprintf(outputfile,"テスト単語：%d\n",n);
@@ -701,12 +748,10 @@ int main(void){
     keyword_encrypt(peks[i],keyword[i],public_key,me_data);
     printf("keyword_enc : A ");
     EC_POINT_print(peks[i]->A,me_data);
-    printf("              B ");
-    EC_POINT_print(peks[i]->B,me_data);
+    printf("              B %s\n",&(peks[i]->B));
     fprintf(outputfile,"keyword_enc : A ");
     EC_POINT_fprint(outputfile,peks[i]->A,me_data);
-    fprintf(outputfile,"              B ");
-    EC_POINT_fprint(outputfile,peks[i]->B,me_data);
+    fprintf(outputfile,"              B %s\n",peks[i]->B);
   }
 
   start=omp_get_wtime();
@@ -739,7 +784,7 @@ int main(void){
     fprintf(outputfile,"trapdoor gmp %f seconds\n",(end-start)/count);
 
     for(i=0;i<n;i++){
-      printf("keyword[%d] : %s ",i,keyword[i]);
+      printf("keyword[%d] : %s \n",i,keyword[i]);
       fprintf(outputfile,"keyword[%d] : %s ",i,keyword[i]);
       if(test(peks[i],trapdoor,me_data)){
         printf("---test fail!!---\n");
@@ -754,8 +799,8 @@ int main(void){
     for(j=0;j<count;j++)
       test(peks[i],trapdoor,me_data);
     end=omp_get_wtime();
-    printf("test[%d] %f seconds\n",(end-start));
-    printf("test[%d] ave %f seconds\n",(end-start)/count);
+    printf("test[%d] %f seconds\n",i,(end-start));
+    printf("test[%d] ave %f seconds\n",i,(end-start)/count);
   }
 
   /*
