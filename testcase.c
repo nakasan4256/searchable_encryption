@@ -27,18 +27,18 @@ typedef struct//Me関数のためのデータ一式
 typedef struct//公開鍵
 {
   EC_POINT *P;//ベースポイント
-  EC_POINT *Q;//秘密鍵*P
+  EC_POINT *Q;//P_a,Z
 } Public_Key[1];
 
 typedef struct//trapdoor
 {
-  EC_POINT *H;
+  EC_POINT *H;//H(w)_a,Z
 } Trapdoor[1];
 
 typedef struct//暗号化されたキーワード
 {
-  EC_POINT *A;
-  unsigned char C[SHA256_DIGEST_LENGTH];
+  EC_POINT *A;//P_r,Z
+  unsigned char C[SHA256_DIGEST_LENGTH];//h(H(w)+Q_r,Z)
 } Peks[1];
 
 #define mpz_mul_mod(a,b,c,p) do { mpz_mul(a,b,c); mpz_mod(a,a,p); } while(0)
@@ -53,12 +53,11 @@ typedef struct//暗号化されたキーワード
 #define peks_init(peks,me_data) do { peks->A=EC_POINT_new(me_data->ec);} while(0)
 #define peks_clear(peks) do { EC_POINT_clear_free(peks->A);} while(0)
 
-void EC_POINT_print(const EC_POINT *P,const Me_DATA me_data){
-  BN_CTX *ctx;
-  ctx=BN_CTX_new();
+void EC_POINT_print(const EC_POINT *P,const Me_DATA me_data,BN_CTX *ctx){
+  BN_CTX_start(ctx);
   BIGNUM *Px,*Py;
-  Px=BN_new();
-  Py=BN_new();
+  Px=BN_CTX_get(ctx);
+  Py=BN_CTX_get(ctx);
   EC_POINT_get_affine_coordinates_GFp(me_data->ec,P,Px,Py,ctx);
 
   fprintf(stdout,"[ ");
@@ -68,17 +67,15 @@ void EC_POINT_print(const EC_POINT *P,const Me_DATA me_data){
   fprintf(stdout," ]");
   puts("");
 
-  BN_clear_free(Px);
-  BN_clear_free(Py);
-  BN_CTX_free(ctx);
+  BN_CTX_end(ctx);
 }
 
-void EC_POINT_fprint(FILE *outputfile,const EC_POINT *P,const Me_DATA me_data){
-  BN_CTX *ctx;
-  ctx=BN_CTX_new();
+void EC_POINT_fprint(FILE *outputfile,const EC_POINT *P,const Me_DATA me_data,BN_CTX *ctx){
+  BN_CTX_start(ctx);
   BIGNUM *Px,*Py;
-  Px=BN_new();
-  Py=BN_new();
+  Px=BN_CTX_get(ctx);
+  Py=BN_CTX_get(ctx);
+
   EC_POINT_get_affine_coordinates_GFp(me_data->ec,P,Px,Py,ctx);
 
   fprintf(outputfile,"[ ");
@@ -87,74 +84,8 @@ void EC_POINT_fprint(FILE *outputfile,const EC_POINT *P,const Me_DATA me_data){
   BN_print_fp(outputfile,Py);
   fprintf(outputfile," ]\n");
 
-  BN_clear_free(Px);
-  BN_clear_free(Py);
-  BN_CTX_free(ctx);
+  BN_CTX_end(ctx);
 }
-
-/*
-void BN_new_mod_pow(BIGNUM *ret,const BIGNUM *a,const BIGNUM *p,const BIGNUM *mod){
-  BN_CTX *ctx;
-  ctx=BN_CTX_new();
-  unsigned char *str;
-  int len,i,j;
-
-  len=BN_num_bytes(p);
-  str=(unsigned char *)malloc(len);
-  len=BN_bn2bin(p,str);
-
-  int count=8*len-BN_num_bits(p);
-  int aa=7-count;
-  BIGNUM *x;
-  x=BN_new();
-  BN_copy(x,a);
-  BN_one(ret);
-  for(i=len-1;i>0;i--){
-    for(j=7;j>=0;j--){
-      if(*(str+i) & 1)
-        BN_mod_mul(ret,ret,x,mod,ctx);
-      BN_mod_sqr(x,x,mod,ctx);
-      *(str+i) >>= 1;
-    }
-  }
-  while (*str != 0) {
-    if(*str & 1)
-      BN_mod_mul(ret,ret,x,mod,ctx);
-    BN_mod_sqr(x,x,mod,ctx);
-    *str >>= 1;
-    aa--;
-  }
-  free(str);
-  BN_clear_free(x);
-  BN_CTX_free(ctx);
-}
-int BN_new_kronecker(BIGNUM *a,BIGNUM *p,BN_CTX *ctx){
-  BIGNUM *ret,*pp;
-  ret=BN_new();
-  pp=BN_new();
-  BN_copy(pp,p);
-  BN_sub_word(pp,1);
-  BN_div_word(pp,2);
-  BN_new_mod_pow(ret,a,pp,p);
-  BN_clear_free(pp);
-  if(BN_is_one(ret)){
-    BN_clear_free(ret);
-    return 1;
-  }else{
-    BN_clear_free(ret);
-    return -1;
-  }
-}
-int new_sign(const Me_DATA me_data,const EC_POINT *P,BN_CTX *ctx){
-  int k;
-  BIGNUM *y0;
-  y0=BN_new();
-  EC_POINT_get_affine_coordinates_GFp(me_data->ec,P,NULL,y0,ctx);
-  k=BN_new_kronecker(y0,me_data->p,ctx);
-  BN_clear_free(y0);
-  return k;
-}
-*/
 
 int Sign(const Me_DATA me_data,const EC_POINT *P,BN_CTX *ctx){
   BIGNUM *y0,*z0;
@@ -172,37 +103,15 @@ int Sign(const Me_DATA me_data,const EC_POINT *P,BN_CTX *ctx){
   mpz_set_str(Z0,str_z,16);
   mpz_mul_mod(Y0,Y0,Z0,me_data->p_mpz);
   int k=mpz_kronecker(Y0,me_data->p_mpz);
+
   free(str_y);
   free(str_z);
   mpz_clears(Y0,Z0,NULL);
-
-  //BN_mod_mul(y0,y0,z0,me_data->p,ctx);
-  //int k=BN_kronecker(y0,me_data->p,ctx);
-  //int k=BN_is_bit_set(y0,0);
-  BN_CTX_end(ctx);
-  return k;
-}
-
-int Sign_bignum(const Me_DATA me_data,const EC_POINT *P,BN_CTX *ctx){
-  BIGNUM *y0,*z0;
-  BN_CTX_start(ctx);
-  y0=BN_CTX_get(ctx);
-  z0=BN_CTX_get(ctx);
-  EC_POINT_get_Jprojective_coordinates_GFp(me_data->ec,P,NULL,y0,z0,ctx);
-  BN_mod_mul(y0,y0,z0,me_data->p,ctx);
-  int k=BN_kronecker(y0,me_data->p,ctx);
   BN_CTX_end(ctx);
   return k;
 }
 
 void Me(EC_POINT *R,const EC_POINT *P,const EC_POINT *Q,const Me_DATA me_data,BN_CTX *ctx){
-  //BIGNUM *k_1;
-  //k_1=BN_new();
-  //BN_copy(k_1,me_data->k);
-  //BN_sub_word(k_1,1);
-  //double start,end;
-  //start=omp_get_wtime();
-
   EC_POINT *AA,*minus;
   AA=EC_POINT_new(me_data->ec);
   minus=EC_POINT_new(me_data->ec);
@@ -210,127 +119,40 @@ void Me(EC_POINT *R,const EC_POINT *P,const EC_POINT *Q,const Me_DATA me_data,BN
   EC_POINT_copy(minus,Q);
   EC_POINT_invert(me_data->ec,minus,ctx);
   EC_POINT_add(me_data->ec,AA,P,minus,ctx);
-  //end=omp_get_wtime();
-  //printf("zyunbi %f seconds\n",end-start);
 
-  //start=omp_get_wtime();
   int sign=Sign(me_data,AA,ctx);
-  //end=omp_get_wtime();
-  //printf("sign %f seconds\n",end-start);
-
-  //start=omp_get_wtime();
   if(EC_POINT_is_at_infinity(me_data->ec,AA)){
     EC_POINT_copy(R,P);
   }else if(sign==-1){
-    //EC_POINT_mul(me_data->ec,kQ,NULL,Q,me_data->k,ctx);
     EC_POINT_dbl(me_data->ec,AA,Q,ctx);
-    //EC_POINT_mul(me_data->ec,kP,NULL,P,k_1,ctx);
-    //EC_POINT_invert(me_data->ec,kP,ctx);
     EC_POINT_copy(minus,P);
     EC_POINT_invert(me_data->ec,minus,ctx);
     EC_POINT_add(me_data->ec,R,AA,minus,ctx);
   }else if(sign==1){
-    //EC_POINT_mul(me_data->ec,kP,NULL,P,me_data->k,ctx);
     EC_POINT_dbl(me_data->ec,AA,P,ctx);
-    //EC_POINT_mul(me_data->ec,kQ,NULL,Q,k_1,ctx);
-    //EC_POINT_invert(me_data->ec,kQ,ctx);
     EC_POINT_add(me_data->ec,R,AA,minus,ctx);
   }else{
     EC_POINT_set_to_infinity(me_data->ec,R);//error
     printf("error!!!!\n");
   }
-  //end=omp_get_wtime();
-  //printf("if %f seconds\n",end-start);
-
-  //BN_clear_free(k_1);
-  EC_POINT_clear_free(AA);
-  EC_POINT_clear_free(minus);
-}
-
-void Me_bignum(EC_POINT *R,const EC_POINT *P,const EC_POINT *Q,const Me_DATA me_data,BN_CTX *ctx){
-  //BIGNUM *k_1;
-  //k_1=BN_new();
-  //BN_copy(k_1,me_data->k);
-  //BN_sub_word(k_1,1);
-  //double start,end;
-  //start=omp_get_wtime();
-
-  EC_POINT *AA,*minus;
-  AA=EC_POINT_new(me_data->ec);
-  minus=EC_POINT_new(me_data->ec);
-
-  EC_POINT_copy(minus,Q);
-  EC_POINT_invert(me_data->ec,minus,ctx);
-  EC_POINT_add(me_data->ec,AA,P,minus,ctx);
-  //end=omp_get_wtime();
-  //printf("zyunbi %f seconds\n",end-start);
-
-  //start=omp_get_wtime();
-  int sign=Sign_bignum(me_data,AA,ctx);
-  //end=omp_get_wtime();
-  //printf("sign %f seconds\n",end-start);
-
-  //start=omp_get_wtime();
-  if(EC_POINT_is_at_infinity(me_data->ec,AA)){
-    EC_POINT_copy(R,P);
-  }else if(sign==-1){
-    //EC_POINT_mul(me_data->ec,kQ,NULL,Q,me_data->k,ctx);
-    EC_POINT_dbl(me_data->ec,AA,Q,ctx);
-    //EC_POINT_mul(me_data->ec,kP,NULL,P,k_1,ctx);
-    //EC_POINT_invert(me_data->ec,kP,ctx);
-    EC_POINT_copy(minus,P);
-    EC_POINT_invert(me_data->ec,minus,ctx);
-    EC_POINT_add(me_data->ec,R,AA,minus,ctx);
-  }else if(sign==1){
-    //EC_POINT_mul(me_data->ec,kP,NULL,P,me_data->k,ctx);
-    EC_POINT_dbl(me_data->ec,AA,P,ctx);
-    //EC_POINT_mul(me_data->ec,kQ,NULL,Q,k_1,ctx);
-    //EC_POINT_invert(me_data->ec,kQ,ctx);
-    EC_POINT_add(me_data->ec,R,AA,minus,ctx);
-  }else{
-    EC_POINT_set_to_infinity(me_data->ec,R);//error
-    printf("error!!!!\n");
-  }
-  //end=omp_get_wtime();
-  //printf("if %f seconds\n",end-start);
-
-  //BN_clear_free(k_1);
   EC_POINT_clear_free(AA);
   EC_POINT_clear_free(minus);
 }
 
 void Me_Z(EC_POINT *R,const EC_POINT *P,const EC_POINT *Q,const Me_DATA me_data,BN_CTX *ctx){
-  //BIGNUM *k_1;
-  //k_1=BN_new();
-  //BN_copy(k_1,me_data->k);
-  //BN_sub_word(k_1,1);
-  //double start,end;
-  //start=omp_get_wtime();
-
   EC_POINT *dbl,*minus;
   dbl=EC_POINT_new(me_data->ec);
   minus=EC_POINT_new(me_data->ec);
-  //printf("Me_second AA: ");
-  //EC_POINT_print(AA,me_data);
-  //end=omp_get_wtime();
-  //printf("zyunbi %f seconds\n",end-start);
 
-  //start=omp_get_wtime();
   if(EC_POINT_is_at_infinity(me_data->ec,me_data->Z)){
     EC_POINT_copy(R,P);
   }else if(me_data->Z_sign==-1){
-    //EC_POINT_mul(me_data->ec,kQ,NULL,Q,me_data->k,ctx);
     EC_POINT_dbl(me_data->ec,dbl,Q,ctx);
-    //EC_POINT_mul(me_data->ec,kP,NULL,P,k_1,ctx);
-    //EC_POINT_invert(me_data->ec,kP,ctx);
     EC_POINT_copy(minus,P);
     EC_POINT_invert(me_data->ec,minus,ctx);
     EC_POINT_add(me_data->ec,R,dbl,minus,ctx);
   }else if(me_data->Z_sign==1){
-    //EC_POINT_mul(me_data->ec,kP,NULL,P,me_data->k,ctx);
     EC_POINT_dbl(me_data->ec,dbl,P,ctx);
-    //EC_POINT_mul(me_data->ec,kQ,NULL,Q,k_1,ctx);
-    //EC_POINT_invert(me_data->ec,kQ,ctx);
     EC_POINT_copy(minus,Q);
     EC_POINT_invert(me_data->ec,minus,ctx);
     EC_POINT_add(me_data->ec,R,dbl,minus,ctx);
@@ -338,52 +160,18 @@ void Me_Z(EC_POINT *R,const EC_POINT *P,const EC_POINT *Q,const Me_DATA me_data,
     EC_POINT_set_to_infinity(me_data->ec,R);//error
     printf("error!!!!\n");
   }
-  //end=omp_get_wtime();
-  //printf("if %f seconds\n",end-start);
-
-  //BN_clear_free(k_1);
   EC_POINT_clear_free(dbl);
   EC_POINT_clear_free(minus);
 }
 
 void Me_mul_1(EC_POINT *R, const EC_POINT *P,const BIGNUM *n,const Me_DATA me_data){
   BN_CTX *ctx;
-  ctx=BN_CTX_new();
+  ctx=BN_CTX_secure_new();
 
   EC_POINT *Y,*ZY;
   Y=EC_POINT_new(me_data->ec);
   ZY=EC_POINT_new(me_data->ec);
-  /*
-  unsigned char *str;
-  int len,i,j;
 
-  len=BN_num_bytes(n);
-  str=(unsigned char *)malloc(len);
-  len=BN_bn2bin(n,str);
-
-  int binary[BN_num_bits(n)];
-  int count=8*len-BN_num_bits(n);
-  int aa=7-count;
-  for(i=len-1;i>0;i--){
-    for(j=7;j>=0;j--){
-      binary[8*i+j-count]= *(str+i) & 1;
-      *(str+i) >>= 1;
-    }
-  }
-  while (*str != 0) {
-    binary[aa]=*str & 1;
-    *str >>= 1;
-    aa--;
-  }
-
-  for(i=0;i<BN_num_bits(n);i++){
-    printf("%d",binary[i]);
-  }
-  printf("\n");
-  printf("len : %d\n",len);
-  printf("count : %d\n",count);
-  printf("aa : %d\n",aa);
-  */
   int i,len;
   len=BN_num_bits(n);
   EC_POINT_copy(Y,P);
@@ -399,63 +187,6 @@ void Me_mul_1(EC_POINT *R, const EC_POINT *P,const BIGNUM *n,const Me_DATA me_da
   EC_POINT_clear_free(Y);
   EC_POINT_clear_free(ZY);
   BN_CTX_free(ctx);
-  //free(str);
-}
-
-void Me_mul_1_bignum(EC_POINT *R, const EC_POINT *P,const BIGNUM *n,const Me_DATA me_data){
-  BN_CTX *ctx;
-  ctx=BN_CTX_new();
-
-  EC_POINT *Y,*ZY;
-  Y=EC_POINT_new(me_data->ec);
-  ZY=EC_POINT_new(me_data->ec);
-  /*
-  unsigned char *str;
-  int len,i,j;
-
-  len=BN_num_bytes(n);
-  str=(unsigned char *)malloc(len);
-  len=BN_bn2bin(n,str);
-
-  int binary[BN_num_bits(n)];
-  int count=8*len-BN_num_bits(n);
-  int aa=7-count;
-  for(i=len-1;i>0;i--){
-    for(j=7;j>=0;j--){
-      binary[8*i+j-count]= *(str+i) & 1;
-      *(str+i) >>= 1;
-    }
-  }
-  while (*str != 0) {
-    binary[aa]=*str & 1;
-    *str >>= 1;
-    aa--;
-  }
-
-  for(i=0;i<BN_num_bits(n);i++){
-    printf("%d",binary[i]);
-  }
-  printf("\n");
-  printf("len : %d\n",len);
-  printf("count : %d\n",count);
-  printf("aa : %d\n",aa);
-  */
-  int i,len;
-  len=BN_num_bits(n);
-  EC_POINT_copy(Y,P);
-  for(i=len-2;i>=0;i--){
-    EC_POINT_add(me_data->ec,ZY,me_data->Z,Y,ctx);
-    Me_Z(Y,ZY,Y,me_data,ctx);
-    if(BN_is_bit_set(n,i)){
-      Me_bignum(Y,Y,P,me_data,ctx);
-    }
-  }
-  EC_POINT_copy(R,Y);
-
-  EC_POINT_clear_free(Y);
-  EC_POINT_clear_free(ZY);
-  BN_CTX_free(ctx);
-  //free(str);
 }
 
 void private_key_create(BIGNUM *private_key,const Me_DATA me_data){
@@ -467,63 +198,63 @@ void public_key_create(Public_Key public_key,const BIGNUM *private_key,const EC_
   Me_mul_1(public_key->Q,base,private_key,me_data);
 }
 
-void public_key_create_bignum(Public_Key public_key,const BIGNUM *private_key,const EC_POINT *base,const Me_DATA me_data){
-  EC_POINT_copy(public_key->P,base);
-  Me_mul_1_bignum(public_key->Q,base,private_key,me_data);
-}
-
-void hash1(EC_POINT *P,const unsigned char *keyword,const Me_DATA me_data){
-  BN_CTX *ctx;
-  ctx=BN_CTX_new();
+void hash1(EC_POINT *P,const unsigned char *keyword,const Me_DATA me_data,BN_CTX *ctx){
   BIGNUM *x0,*y0;
-  x0=BN_new();
-  y0=BN_new();
+  BN_CTX_start(ctx);
+  x0=BN_CTX_get(ctx);
+  y0=BN_CTX_get(ctx);
 
 	unsigned char hash[SHA256_DIGEST_LENGTH];
 	SHA256(keyword,strlen(keyword),hash);
-  /*
-  for ( size_t i = 0; i < SHA256_DIGEST_LENGTH; i++ ){
-		printf("%02x", hash[i] );
-	}
-	printf("\n");
-  */
   BN_bin2bn(hash,32,x0);
-  //BN_print_fp(stdout,x0);
-  //puts("");
   do{
     BN_add_word(x0,1);
     BN_mod_sqr(y0,x0,me_data->p,ctx);
-    //BN_mod_add(y0,y0,me_data->a,me_data->p,ctx);  //曲線を自由に選ぶとき用
     BN_mod_mul(y0,y0,x0,me_data->p,ctx);
-    //BN_mod_add(y0,y0,me_data->b,me_data->p,ctx);
     BN_add_word(y0,7);
   }while(BN_kronecker(y0,me_data->p,ctx)<1);
   BN_mod_sqrt(y0,y0,me_data->p,ctx);
   EC_POINT_set_affine_coordinates_GFp(me_data->ec,P,x0,y0,ctx);
-  /*
-  BN_print_fp(stdout,x0);
-  puts("");
-  BN_print_fp(stdout,y0);
-  puts("");
-  */
-  BN_clear_free(x0);
-  BN_clear_free(y0);
-  BN_CTX_free(ctx);
+
+  BN_CTX_end(ctx);
 }
 
-void trapdoor_create(Trapdoor trapdoor,const BIGNUM *private_key,const char *keyword,const Me_DATA me_data){
-  hash1(trapdoor->H,keyword,me_data);
+void hash1_mpz(EC_POINT *P,const unsigned char *keyword,const Me_DATA me_data,BN_CTX *ctx){
+  BIGNUM *x0;
+  BN_CTX_start(ctx);
+  x0=BN_CTX_get(ctx);
+  mpz_t X0,Y0;
+  mpz_inits(X0,Y0,NULL);
+
+	unsigned char hash[SHA256_DIGEST_LENGTH];
+	SHA256(keyword,strlen(keyword),hash);
+  mpz_set_str(X0,hash,2);
+
+  do{
+    //BN_add_word(x0,1);
+    //BN_mod_sqr(y0,x0,me_data->p,ctx);
+    //BN_mod_mul(y0,y0,x0,me_data->p,ctx);
+    //BN_add_word(y0,7);
+
+    mpz_add_ui(X0,X0,1);
+    mpz_powm_ui(Y0,X0,3,me_data->p_mpz);
+    mpz_add_ui(Y0,Y0,7);
+  }while(mpz_kronecker(Y0,me_data->p_mpz)<1);
+  //BN_mod_sqrt(y0,y0,me_data->p,ctx);
+
+  //EC_POINT_set_affine_coordinates_GFp(me_data->ec,P,x0,y0,ctx);
+
+  BN_CTX_end(ctx);
+}
+
+void trapdoor_create(Trapdoor trapdoor,const BIGNUM *private_key,const char *keyword,const Me_DATA me_data,BN_CTX *ctx){
+  hash1(trapdoor->H,keyword,me_data,ctx);
   Me_mul_1(trapdoor->H,trapdoor->H,private_key,me_data);
-}
-
-void trapdoor_create_bignum(Trapdoor trapdoor,const BIGNUM *private_key,const char *keyword,const Me_DATA me_data){
-  hash1(trapdoor->H,keyword,me_data);
-  Me_mul_1_bignum(trapdoor->H,trapdoor->H,private_key,me_data);
 }
 
 void keyword_encrypt(Peks peks,const unsigned char *keyword,const Public_Key public_key,const Me_DATA me_data){
   BN_CTX *ctx;
-  ctx=BN_CTX_new();
+  ctx=BN_CTX_secure_new();
   BIGNUM *r;
   r=BN_new();
   EC_POINT *C1;
@@ -532,12 +263,11 @@ void keyword_encrypt(Peks peks,const unsigned char *keyword,const Public_Key pub
   C2=EC_POINT_new(me_data->ec);
   unsigned char *a=NULL;
   int len;
-  //EC_POINT_copy(C2,public_key->P);
-  //EC_POINT_invert(me_data->ec,C2,ctx);
+
   BN_rand_range(r,me_data->order);
 
   Me_mul_1(peks->A,public_key->P,r,me_data);
-  hash1(C1,keyword,me_data);
+  hash1(C1,keyword,me_data,ctx);
   EC_POINT_copy(C2,public_key->P);
   EC_POINT_invert(me_data->ec,C2,ctx);
   EC_POINT_add(me_data->ec,C1,C1,C2,ctx);
@@ -549,6 +279,7 @@ void keyword_encrypt(Peks peks,const unsigned char *keyword,const Public_Key pub
   a = (unsigned char *)malloc(len);
   a = BN_bn2hex(r);
   SHA256(a,strlen(a),peks->C);
+
   free(a);
   EC_POINT_clear_free(C1);
   EC_POINT_clear_free(C2);
@@ -556,31 +287,9 @@ void keyword_encrypt(Peks peks,const unsigned char *keyword,const Public_Key pub
   BN_CTX_free(ctx);
 }
 
-/*
-void keyword_encrypt_bignum(Peks peks,const unsigned char *keyword,const Public_Key public_key,const Me_DATA me_data){
-  BN_CTX *ctx;
-  ctx=BN_CTX_new();
-  BIGNUM *r;
-  r=BN_new();
-  EC_POINT *C1;
-  C1=EC_POINT_new(me_data->ec);
-
-  BN_rand_range(r,me_data->order);
-
-  Me_mul_1_bignum(peks->A,public_key->P,r,me_data);
-  hash1(peks->B,keyword,me_data);
-  Me_bignum(peks->B,peks->B,peks->A,me_data,ctx);
-  Me_mul_1_bignum(C1,public_key->Q,r,me_data);
-  EC_POINT_add(me_data->ec,peks->B,peks->B,C1,ctx);
-
-  EC_POINT_clear_free(C1);
-  BN_clear_free(r);
-  BN_CTX_free(ctx);
-}*/
-
 int test(const Peks peks,const Trapdoor trapdoor,const Me_DATA me_data){
   BN_CTX *ctx;
-  ctx=BN_CTX_new();
+  ctx=BN_CTX_secure_new();
   EC_POINT *check;
   BIGNUM *x0;
   check=EC_POINT_new(me_data->ec);
@@ -604,30 +313,6 @@ int test(const Peks peks,const Trapdoor trapdoor,const Me_DATA me_data){
   return k;
 }
 
-/*int test_bignum(const Peks peks,const Trapdoor trapdoor,const Me_DATA me_data){
-  BN_CTX *ctx;
-  ctx=BN_CTX_new();
-  EC_POINT *check;
-  check=EC_POINT_new(me_data->ec);
-
-  Me_bignum(check,trapdoor->H,peks->A,me_data,ctx);
-  EC_POINT_invert(me_data->ec,check,ctx);
-  EC_POINT_add(me_data->ec,check,peks->B,check,ctx);
-  Me_bignum(check,trapdoor->Ha,check,me_data,ctx);
-  EC_POINT_add(me_data->ec,check,check,peks->A,ctx);
-  /*
-  if(EC_POINT_cmp(me_data->ec,check,peks->B,ctx)){
-    printf("---test fail!!---\n");
-  }else{
-    printf("---test success!!---\n");
-  }
-
-  int k=EC_POINT_cmp(me_data->ec,check,peks->B,ctx);
-  EC_POINT_clear_free(check);
-  BN_CTX_free(ctx);
-  return k;
-}*/
-
 int main(void){
   int i,j,n=5;//テスト用キーワードの個数
   int count=1000;//テスト実行回数
@@ -646,7 +331,7 @@ int main(void){
   printf("encrypt %f seconds\n",(end-start)/5000);
   */
   BN_CTX *ctx;
-  ctx=BN_CTX_new();
+  ctx=BN_CTX_secure_new();
 
   Me_DATA me_data;
   Me_data_init(me_data);
@@ -675,6 +360,12 @@ int main(void){
 
   EC_POINT_get_affine_coordinates_GFp(me_data->ec,P,k,NULL,ctx);
 
+  start=omp_get_wtime();
+  for(i=0;i<10000;i++)
+    hash1(P,"keyword",me_data,ctx);
+  end=omp_get_wtime();
+  printf("hash1 %f seconds\n",(end-start)/10000);
+
   fprintf(outputfile,"テスト回数：%d\n",count);
   fprintf(outputfile,"テスト単語数：%d\n",n);
   fprintf(outputfile,"------------------------------------\n");
@@ -691,13 +382,13 @@ int main(void){
 
   public_key_create(public_key,private_key,P,me_data);
   printf("public_key : P ");
-  EC_POINT_print(public_key->P,me_data);
+  EC_POINT_print(public_key->P,me_data,ctx);
   printf("             Q ");
-  EC_POINT_print(public_key->Q,me_data);
+  EC_POINT_print(public_key->Q,me_data,ctx);
   fprintf(outputfile,"public_key : P ");
-  EC_POINT_fprint(outputfile,public_key->P,me_data);
+  EC_POINT_fprint(outputfile,public_key->P,me_data,ctx);
   fprintf(outputfile,"             Q ");
-  EC_POINT_fprint(outputfile,public_key->Q,me_data);
+  EC_POINT_fprint(outputfile,public_key->Q,me_data,ctx);
 
   start=omp_get_wtime();
   for(i=0;i<count;i++)
@@ -722,14 +413,14 @@ int main(void){
     keyword_encrypt(peks[i],keyword[i],public_key,me_data);
 
     printf("keyword_enc : A ");
-    EC_POINT_print(peks[i]->A,me_data);
+    EC_POINT_print(peks[i]->A,me_data,ctx);
     printf("              C ");
     for (size_t m = 0; m < SHA256_DIGEST_LENGTH; m++ ){
       printf("%02x", peks[i]->C[m] );
     }
     printf("\n");
     fprintf(outputfile,"keyword_enc : A ");
-    EC_POINT_fprint(outputfile,peks[i]->A,me_data);
+    EC_POINT_fprint(outputfile,peks[i]->A,me_data,ctx);
     fprintf(outputfile,"              C ");
     for (size_t m = 0; m < SHA256_DIGEST_LENGTH; m++ ){
       fprintf(outputfile,"%02x", peks[i]->C[m] );
@@ -754,16 +445,16 @@ int main(void){
   scanf("%s",word);
   fprintf(outputfile,"search : %s\n",word);
 
-  trapdoor_create(trapdoor,private_key,word,me_data);
+  trapdoor_create(trapdoor,private_key,word,me_data,ctx);
 
   printf("trapdoor : ");
-  EC_POINT_print(trapdoor->H,me_data);
+  EC_POINT_print(trapdoor->H,me_data,ctx);
   fprintf(outputfile,"trapdoor : ");
-  EC_POINT_fprint(outputfile,trapdoor->H,me_data);
+  EC_POINT_fprint(outputfile,trapdoor->H,me_data,ctx);
 
   start=omp_get_wtime();
   for(i=0;i<count;i++)
-    trapdoor_create(trapdoor,private_key,word,me_data);
+    trapdoor_create(trapdoor,private_key,word,me_data,ctx);
   end=omp_get_wtime();
 
   //printf("trapdoor %f seconds\n",(end-start));
@@ -793,61 +484,9 @@ int main(void){
       test(peks[i],trapdoor,me_data);
     end=omp_get_wtime();
     //printf("test[%d] %f seconds\n",i,(end-start));
-    printf("test[%d] ave %f seconds\n",i,(end-start)/count);
-    fprintf(outputfile,"test[%d] ave %f seconds\n",i,(end-start)/count);
+    printf("keyword[%d] test ave %f seconds\n",i,(end-start)/count);
+    fprintf(outputfile,"keyword[%d] test ave %f seconds\n",i,(end-start)/count);
   }
-
-  /*
-  BIGNUM *Rx;
-  BIGNUM *Ry;
-  BIGNUM *Sx;
-  BIGNUM *Sy;
-  Rx=BN_new();
-  Ry=BN_new();
-  Sx=BN_new();
-  Sy=BN_new();
-
-  EC_POINT_get_affine_coordinates_GFp(ec,R,Rx,Ry,ctx);
-  EC_POINT_get_affine_coordinates_GFp(ec,S,Sx,Sy,ctx);
-  BN_print_fp(stdout,Rx);
-  puts("");
-  BN_print_fp(stdout,Ry);
-  puts("");
-  BN_print_fp(stdout,Sx);
-  puts("");
-  BN_print_fp(stdout,Sy);
-  puts("");
-  */
-
-  /*
-  EC_POINT *R,*S;
-  R=EC_POINT_new(me_data->ec);
-  S=EC_POINT_new(me_data->ec);
-  BIGNUM *Rx,*Ry,*Sx,*Sy;
-  Rx=BN_new();
-  Ry=BN_new();
-  Sx=BN_new();
-  Sy=BN_new();
-  BN_rand_range(Rx,me_data->order);
-  BN_rand_range(Ry,me_data->order);
-
-  Me_mul_1(R,P,Rx,me_data);
-  Me_mul_1(R,R,Ry,me_data);
-
-  Me_mul_1(S,P,Ry,me_data);
-  Me_mul_1(S,S,Rx,me_data);
-
-  EC_POINT_get_affine_coordinates_GFp(me_data->ec,R,Rx,Ry,ctx);
-  EC_POINT_get_affine_coordinates_GFp(me_data->ec,S,Sx,Sy,ctx);
-  BN_print_fp(stdout,Rx);
-  puts("");
-  BN_print_fp(stdout,Ry);
-  puts("");
-  BN_print_fp(stdout,Sx);
-  puts("");
-  BN_print_fp(stdout,Sy);
-  puts("");
-  */
 
   EC_POINT_clear_free(P);
   EC_POINT_clear_free(Z);
