@@ -677,6 +677,7 @@ int main(void){
 
   fprintf(outputfile,"テスト回数：%d\n",count);
   fprintf(outputfile,"テスト単語数：%d\n",n);
+  fprintf(outputfile,"------------------------------------\n");
 
   private_key_create(private_key,me_data);
   //BN_set_word(private_key,100);
@@ -686,35 +687,31 @@ int main(void){
   fprintf(outputfile,"private_key : ");
   BN_print_fp(outputfile,private_key);
   fprintf(outputfile,"\n");
+  fprintf(outputfile,"------------------------------------\n");
 
   public_key_create(public_key,private_key,P,me_data);
   printf("public_key : P ");
   EC_POINT_print(public_key->P,me_data);
   printf("             Q ");
   EC_POINT_print(public_key->Q,me_data);
-  printf("------------------------------------\n");
   fprintf(outputfile,"public_key : P ");
   EC_POINT_fprint(outputfile,public_key->P,me_data);
   fprintf(outputfile,"             Q ");
   EC_POINT_fprint(outputfile,public_key->Q,me_data);
-  fprintf(outputfile,"------------------------------------\n");
-
 
   start=omp_get_wtime();
   for(i=0;i<count;i++)
      public_key_create(public_key,private_key,P,me_data);
   end=omp_get_wtime();
-  printf("public_key %f seconds\n",(end-start));
+  //printf("public_key %f seconds\n",(end-start));
   printf("public_key ave %f seconds\n",(end-start)/count);
-  fprintf(outputfile,"public_key %f seconds\n",(end-start));
-  fprintf(outputfile,"public_key ave %f seconds\n",(end-start)/count);
   printf("------------------------------------\n");
+  //fprintf(outputfile,"public_key %f seconds\n",(end-start));
+  fprintf(outputfile,"public_key ave %f seconds\n",(end-start)/count);
   fprintf(outputfile,"------------------------------------\n");
 
   unsigned char keyword[n][32];
   Peks peks[n];
-  //for(i=0;i<11;i++)
-  //  printf("BN_is_bit_set : %d\n",BN_is_bit_set(k,i));
 
   for(i=0;i<n;i++){//1度暗号化
     printf("keyword[%d] : ",i);
@@ -739,25 +736,23 @@ int main(void){
     }
     fprintf(outputfile,"\n");
   }
-  printf("------------------------------------\n");
-  fprintf(outputfile,"------------------------------------\n");
 
   start=omp_get_wtime();
   for(i=0;i<count;i++)
     keyword_encrypt(peks[0],keyword[0],public_key,me_data);
   end=omp_get_wtime();
 
-  printf("encrypt %f seconds\n",(end-start));
+  //printf("encrypt %f seconds\n",(end-start));
   printf("encrypt ave %f seconds\n",(end-start)/count);
-  fprintf(outputfile,"encrypt %f seconds\n",(end-start));
-  fprintf(outputfile,"encrypt ave %f seconds\n",(end-start)/count);
   printf("------------------------------------\n");
+  //fprintf(outputfile,"encrypt %f seconds\n",(end-start));
+  fprintf(outputfile,"encrypt ave %f seconds\n",(end-start)/count);
   fprintf(outputfile,"------------------------------------\n");
 
   unsigned char word[32];
   printf("search : ");
   scanf("%s",word);
-  fprintf(outputfile,"search keyword : %s\n",word);
+  fprintf(outputfile,"search : %s\n",word);
 
   trapdoor_create(trapdoor,private_key,word,me_data);
 
@@ -771,15 +766,15 @@ int main(void){
     trapdoor_create(trapdoor,private_key,word,me_data);
   end=omp_get_wtime();
 
-  printf("trapdoor %f seconds\n",(end-start));
+  //printf("trapdoor %f seconds\n",(end-start));
   printf("trapdoor ave %f seconds\n",(end-start)/count);
-  fprintf(outputfile,"trapdoor %f seconds\n",(end-start));
-  fprintf(outputfile,"trapdoor ave %f seconds\n",(end-start)/count);
   printf("------------------------------------\n");
+  //fprintf(outputfile,"trapdoor %f seconds\n",(end-start));
+  fprintf(outputfile,"trapdoor ave %f seconds\n",(end-start)/count);
   fprintf(outputfile,"------------------------------------\n");
 
   for(i=0;i<n;i++){
-    printf("keyword[%d] : %s \n",i,keyword[i]);
+    printf("keyword[%d] : %s ",i,keyword[i]);
     fprintf(outputfile,"keyword[%d] : %s ",i,keyword[i]);
     if(test(peks[i],trapdoor,me_data)){
       printf("---test fail!!---\n");
@@ -797,8 +792,9 @@ int main(void){
     for(j=0;j<count;j++)
       test(peks[i],trapdoor,me_data);
     end=omp_get_wtime();
-    printf("test[%d] %f seconds\n",i,(end-start));
+    //printf("test[%d] %f seconds\n",i,(end-start));
     printf("test[%d] ave %f seconds\n",i,(end-start)/count);
+    fprintf(outputfile,"test[%d] ave %f seconds\n",i,(end-start)/count);
   }
 
   /*
