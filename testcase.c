@@ -262,7 +262,6 @@ void keyword_encrypt(Peks peks,const unsigned char *keyword,const Public_Key pub
   C1=EC_POINT_new(me_data->ec);
   C2=EC_POINT_new(me_data->ec);
   unsigned char *a=NULL;
-  int len;
 
   BN_rand_range(r,me_data->order);
 
@@ -275,8 +274,7 @@ void keyword_encrypt(Peks peks,const unsigned char *keyword,const Public_Key pub
   EC_POINT_add(me_data->ec,C1,C1,peks->A,ctx);
 
   EC_POINT_get_affine_coordinates_GFp(me_data->ec,C1,r,NULL,ctx);
-  len = BN_num_bytes(r);
-  a = (unsigned char *)malloc(len);
+  a = (unsigned char *)malloc(BN_num_bytes(r));
   a = BN_bn2hex(r);
   SHA256(a,strlen(a),peks->C);
 
@@ -294,18 +292,16 @@ int test(const Peks peks,const Trapdoor trapdoor,const Me_DATA me_data){
   BIGNUM *x0;
   check=EC_POINT_new(me_data->ec);
   x0=BN_new();
-  int len,k=-1;
   unsigned char *a=NULL;
   unsigned char hash[SHA256_DIGEST_LENGTH];
 
   EC_POINT_add(me_data->ec,check,peks->A,trapdoor->H,ctx);
   EC_POINT_get_affine_coordinates_GFp(me_data->ec,check,x0,NULL,ctx);
-  len = BN_num_bytes(x0);
-  a = (unsigned char *)malloc(len);
+  a = (unsigned char *)malloc(BN_num_bytes(x0));
   a = BN_bn2hex(x0);
   SHA256(a,strlen(a),hash);
 
-  k=memcmp(hash,peks->C,32);
+  int k=memcmp(hash,peks->C,32);
   EC_POINT_clear_free(check);
   BN_clear_free(x0);
   BN_CTX_free(ctx);
@@ -358,17 +354,21 @@ int main(void){
   me_data->Z_sign=Sign(me_data,Z,ctx);
   P=EC_GROUP_get0_generator(me_data->ec);
 
-  EC_POINT_get_affine_coordinates_GFp(me_data->ec,P,k,NULL,ctx);
-
   start=omp_get_wtime();
   for(i=0;i<10000;i++)
     hash1(P,"keyword",me_data,ctx);
   end=omp_get_wtime();
   printf("hash1 %f seconds\n",(end-start)/10000);
 
+
   fprintf(outputfile,"テスト回数：%d\n",count);
   fprintf(outputfile,"テスト単語数：%d\n",n);
   fprintf(outputfile,"------------------------------------\n");
+
+  printf("Z : ");
+  EC_POINT_print(Z,me_data,ctx);
+  fprintf(outputfile,"Z : ");
+  EC_POINT_fprint(outputfile,Z,me_data,ctx);
 
   private_key_create(private_key,me_data);
   //BN_set_word(private_key,100);
@@ -378,7 +378,6 @@ int main(void){
   fprintf(outputfile,"private_key : ");
   BN_print_fp(outputfile,private_key);
   fprintf(outputfile,"\n");
-  fprintf(outputfile,"------------------------------------\n");
 
   public_key_create(public_key,private_key,P,me_data);
   printf("public_key : P ");
