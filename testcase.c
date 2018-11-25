@@ -354,17 +354,14 @@ int main(void){
   me_data->Z_sign=Sign(me_data,Z,ctx);
   P=EC_GROUP_get0_generator(me_data->ec);
 
-  start=omp_get_wtime();
-  for(i=0;i<10000;i++)
-    hash1(P,"keyword",me_data,ctx);
-  end=omp_get_wtime();
-  printf("hash1 %f seconds\n",(end-start)/10000);
-
-
+  printf("テスト回数：%d\n",count);
+  printf("テスト単語数：%d\n",n);
+  printf("------------------------------------\n");
   fprintf(outputfile,"テスト回数：%d\n",count);
   fprintf(outputfile,"テスト単語数：%d\n",n);
   fprintf(outputfile,"------------------------------------\n");
 
+  printf("補助元 Z を決める\n");
   printf("Z : ");
   EC_POINT_print(Z,me_data,ctx);
   fprintf(outputfile,"Z : ");
@@ -372,6 +369,7 @@ int main(void){
 
   private_key_create(private_key,me_data);
   //BN_set_word(private_key,100);
+  printf("秘密鍵を決める\n");
   printf("private_key : ");
   BN_print_fp(stdout,private_key);
   puts("");
@@ -380,6 +378,7 @@ int main(void){
   fprintf(outputfile,"\n");
 
   public_key_create(public_key,private_key,P,me_data);
+  printf("公開鍵を計算\n");
   printf("public_key : P ");
   EC_POINT_print(public_key->P,me_data,ctx);
   printf("             Q ");
@@ -402,7 +401,7 @@ int main(void){
 
   unsigned char keyword[n][32];
   Peks peks[n];
-
+  printf("キーワード(検索タグ)を %d 個入力してください\n",n);
   for(i=0;i<n;i++){//1度暗号化
     printf("keyword[%d] : ",i);
     scanf("%s",keyword[i]);
@@ -440,6 +439,7 @@ int main(void){
   fprintf(outputfile,"------------------------------------\n");
 
   unsigned char word[32];
+  printf("検索するキーワードを入力してください\n");
   printf("search : ");
   scanf("%s",word);
   fprintf(outputfile,"search : %s\n",word);
