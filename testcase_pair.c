@@ -40,7 +40,6 @@ void private_key_create(mpz_t private_key,mpz_t p){
 }
 
 void public_key_create(Public_Key public_key,mpz_t private_key,EC_POINT P){
-  point_set(public_key->P,P);
   point_mul(public_key->Q,private_key,P);
 }
 
@@ -112,11 +111,11 @@ int main(void){
   pairing_init(pair,"ECBN254a");
 
   mpz_set(p,pairing_get_order(pair));
-  printf("aaa\n");
+
   EC_POINT P;
   point_init(P,pair->g2);
   point_random(P);
-
+/*
   unsigned char* os;
   size_t *size;
   os=(char *)malloc(1000);
@@ -125,7 +124,7 @@ int main(void){
   for (size_t m = 0; m < 1000; m++ ){
     printf("%02x", os[m] );
   }
-
+*/
   Public_Key public_key;
   public_key_init(public_key,pair->g2);
 
@@ -141,6 +140,7 @@ int main(void){
   gmp_printf("private_key : %ZXd\n",private_key);
   gmp_fprintf(outputfile,"private_key : %ZXd\n",private_key);
 
+  point_set(public_key->P,P);
   public_key_create(public_key,private_key,P);
   printf("公開鍵を計算\n");
   printf("public_key : P ");
@@ -153,57 +153,81 @@ int main(void){
   for(i=0;i<count;i++)
     public_key_create(public_key,private_key,P);
   end=omp_get_wtime();
-  printf("public : %f seconds\n",(end-start));
-  printf("public : %f seconds\n",(end-start)/count);
+  printf("public_key ave %f seconds\n",(end-start)/count);
   printf("-------------------------------------\n");
+  fprintf(outputfile,"public_key ave %f seconds\n",(end-start)/count);
+  fprintf(outputfile,"-------------------------------------\n");
 
   char keyword[n][32];
-
   Peks peks[n];
+  printf("キーワード(検索タグ)を %d 個入力してください\n",n);
   for(i=0;i<n;i++){
     printf("keyword[%d] : ",i);
     scanf("%s",keyword[i]);
+    fprintf(outputfile,"keyword[%d] : %s\n",i,keyword[i]);
+
     peks_init(peks[i],pair->g2,pair->g3);
     keyword_encrypt(peks[i],keyword[i],public_key,pair,p);
+
+    printf("keyword_enc : A ");
+    point_print(peks[i]->A);
+    printf("              B ");
+    element_print(peks[i]->B);
   }
 
   start=omp_get_wtime();
   for(i=0;i<count;i++)
     keyword_encrypt(peks[0],keyword[0],public_key,pair,p);
   end=omp_get_wtime();
-  printf("encrypt : %f seconds\n",(end-start));
-  printf("encrypt : %f seconds\n",(end-start)/count);
+  printf("encrypt ave %f seconds\n",(end-start)/count);
+  printf("------------------------------------\n");
+  fprintf(outputfile,"encrypt ave %f seconds\n",(end-start)/count);
+  fprintf(outputfile,"------------------------------------\n");
 
   EC_POINT trapdoor;
   point_init(trapdoor,pair->g1);
 
-  while(1){
-    char word[128];
-    printf("search : ");
-    scanf("%s",word);
+  char word[32];
+  printf("検索するキーワードを入力してください\n");
+  printf("search : ");
+  scanf("%s",word);
+  fprintf(outputfile,"search : %s\n",word);
 
+  trapdoor_create(trapdoor,private_key,word,pair);
+
+  printf("trapdoor : ");
+  point_print(trapdoor);
+
+  start=omp_get_wtime();
+  for(i=0;i<count;i++)
     trapdoor_create(trapdoor,private_key,word,pair);
+  end=omp_get_wtime();
+  printf("trapdoor ave %f seconds\n",(end-start)/count);
+  printf("------------------------------------\n");
+  fprintf(outputfile,"trapdoor ave %f seconds\n",(end-start)/count);
+  fprintf(outputfile,"------------------------------------\n");
 
-    start=omp_get_wtime();
-    for(i=0;i<count;i++)
-      trapdoor_create(trapdoor,private_key,word,pair);
-    end=omp_get_wtime();
-    printf("trapdoor : %f seconds\n",(end-start));
-    printf("trapdoor : %f seconds\n",(end-start)/count);
-
-    for(i=0;i<n;i++){
-      if(test(peks[i],trapdoor,pair)==0){
-        printf("keyword[%d] : %s Good!\n",i,keyword[i]);
-      }else{
-        printf("keyword[%d] : %s bad!\n",i,keyword[i]);
-      }
+  for(i=0;i<n;i++){
+    printf("keyword[%d] : %s ",i,keyword[i]);
+    fprintf(outputfile,"keyword[%d] : %s ",i,keyword[i]);
+    if(test(peks[i],trapdoor,pair)){
+      printf("---test fail!!---\n");
+      fprintf(outputfile,"---test fail!!---\n");
+    }else{
+      printf("---test success!!---\n");
+      fprintf(outputfile,"---test success!!---\n");
     }
+  }
+  printf("------------------------------------\n");
+  fprintf(outputfile,"------------------------------------\n");
+
+  for(i=0;i<n;i++){
     start=omp_get_wtime();
-    for(i=0;i<count;i++)
-      test(peks[0],trapdoor,pair);
+    for(j=0;j<count;j++)
+      test(peks[i],trapdoor,pair);
     end=omp_get_wtime();
-    printf("test : %f seconds\n",(end-start));
-    printf("test : %f seconds\n",(end-start)/count);
+    printf("keyword[%d] test ave %f seconds\n",i,(end-start)/count);
+    fprintf(outputfile,"keyword[%d] test ave %f seconds\n",i,(end-start)/count);
   }
 
   mpz_clears(p,private_key,NULL);
