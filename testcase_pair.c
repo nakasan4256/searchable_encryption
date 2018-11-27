@@ -46,6 +46,7 @@ void private_key_create(mpz_t private_key,mpz_t p){
 }
 
 void public_key_create(Public_Key public_key,mpz_t private_key,EC_POINT P){
+  point_set(public_key->P,P);
   point_mul(public_key->Q,private_key,P);
 }
 
@@ -145,10 +146,9 @@ int main(void){
 
   private_key_create(private_key,p);
   printf("秘密鍵を決める\n");
-  gmp_printf("private_key : %ZXd\n",private_key);
-  gmp_fprintf(outputfile,"private_key : %ZXd\n",private_key);
+  gmp_printf("private_key : %ZX\n",private_key);
+  gmp_fprintf(outputfile,"private_key : %ZX\n",private_key);
 
-  point_set(public_key->P,P);
   public_key_create(public_key,private_key,P);
   printf("公開鍵を計算\n");
   printf("public_key : P ");
