@@ -117,7 +117,7 @@ int main(void){
     printf("cannot open\n");
     exit(1);
   }
-
+  size_t m;
   double start,end;
 
   mpz_t p;
@@ -186,14 +186,14 @@ int main(void){
     printf("keyword_enc : A ");
     point_print(peks[i]->A);
     printf("              B ");
-    for (size_t m = 0; m < SHA256_DIGEST_LENGTH; m++ ){
+    for (m = 0; m < SHA256_DIGEST_LENGTH; m++ ){
       printf("%02x", peks[i]->B[m] );
     }
     printf("\n");
     fprintf(outputfile,"keyword_enc : A ");
     point_fprint(outputfile,peks[i]->A);
     fprintf(outputfile,"              B ");
-    for (size_t m = 0; m < SHA256_DIGEST_LENGTH; m++ ){
+    for (m = 0; m < SHA256_DIGEST_LENGTH; m++ ){
       fprintf(outputfile,"%02x", peks[i]->B[m] );
     }
     fprintf(outputfile,"\n");
