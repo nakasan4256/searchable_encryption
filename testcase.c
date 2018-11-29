@@ -1,5 +1,5 @@
 //secp192k1 711 secp256k1 714 openssl/obj_mac.h
-//gcc -fopenmp -O2 -o Me2 searchable_encryption_Me2.c -L/usr/local/lib -I/usr/local/include -lssl -lcrypto
+//gcc -fopenmp -O2 -o testcase testcase.c -L/usr/local/lib -I/usr/local/include -lssl -lcrypto
 
 #include<stdio.h>
 #include<string.h>
@@ -311,7 +311,7 @@ int test(const Peks peks,const Trapdoor trapdoor,const Me_DATA me_data){
 
 int main(void){
   int i,j,n=5;//テスト用キーワードの個数
-  int count=1000;//テスト実行回数
+  int count=10000;//テスト実行回数
   FILE *outputfile;
   outputfile = fopen("d.txt", "w");
   if (outputfile == NULL) {

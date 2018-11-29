@@ -1,4 +1,4 @@
-//gcc -fopenmp -O2 -o pair searchable_encryption_pairing.c -L/usr/local/lib -I/usr/local/include -ltepla -lssl -lcrypto -lgmp
+//gcc -fopenmp -O2 -o test_pair testcase_pair.c -L/usr/local/lib -I/usr/local/include -ltepla -lssl -lcrypto -lgmp
 
 #include<stdio.h>
 #include<stdlib.h>
@@ -109,7 +109,7 @@ int test(Peks peks,EC_POINT trapdoor,EC_PAIRING pair){
 int main(void){
 
   int i,j,n=5;
-  int count=1000;
+  int count=10000;
   FILE *outputfile;
   outputfile = fopen("pair.txt", "w");
   if (outputfile == NULL) {
