@@ -110,7 +110,7 @@ int test(Peks peks,EC_POINT trapdoor,EC_PAIRING pair){
 int main(void){
 
   int i,j,n=5;
-  int count=10000;
+  int count=100000;
   FILE *outputfile;
   outputfile = fopen("pair.txt", "w");
   if (outputfile == NULL) {

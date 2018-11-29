@@ -311,7 +311,7 @@ int test(const Peks peks,const Trapdoor trapdoor,const Me_DATA me_data){
 
 int main(void){
   int i,j,n=5;//テスト用キーワードの個数
-  int count=10000;//テスト実行回数
+  int count=100000;//テスト実行回数
   FILE *outputfile;
   outputfile = fopen("d.txt", "w");
   if (outputfile == NULL) {
