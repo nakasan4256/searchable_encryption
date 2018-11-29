@@ -1,4 +1,5 @@
 //gcc -fopenmp -O2 -o test_pair testcase_pair.c -L/usr/local/lib -I/usr/local/include -ltepla -lssl -lcrypto -lgmp
+//gcc -fopenmp -O2 -o test_pair testcase_pair.c -L/home/b1015014/lib -I/home/b1015014/include -ltepla -lssl -lcrypto -lgmp
 
 #include<stdio.h>
 #include<stdlib.h>

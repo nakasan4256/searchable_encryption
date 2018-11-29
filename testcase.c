@@ -1,6 +1,6 @@
 //secp192k1 711 secp256k1 714 openssl/obj_mac.h
-//gcc -fopenmp -O2 -o testcase testcase.c -L/usr/local/lib -I/usr/local/include -lssl -lcrypto
-
+//gcc -fopenmp -O2 -o testcase testcase.c -L/usr/local/lib -I/usr/local/include -lssl -lcrypto -lgmp
+//gcc -fopenmp -O2 -o testcase testcase.c -L/home/b1015014/lib -I/home/b1015104/include -lssl -lcrypto -lgmp
 #include<stdio.h>
 #include<string.h>
 #include<stdlib.h>
