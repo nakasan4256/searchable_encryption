@@ -318,6 +318,7 @@ int main(void){
     printf("cannot open\n");
     exit(1);
   }
+  size_t m;
 
   double start,end;
   /*start=omp_get_wtime();
@@ -413,14 +414,14 @@ int main(void){
     printf("keyword_enc : A ");
     EC_POINT_print(peks[i]->A,me_data,ctx);
     printf("              C ");
-    for (size_t m = 0; m < SHA256_DIGEST_LENGTH; m++ ){
+    for (m = 0; m < SHA256_DIGEST_LENGTH; m++ ){
       printf("%02x", peks[i]->C[m] );
     }
     printf("\n");
     fprintf(outputfile,"keyword_enc : A ");
     EC_POINT_fprint(outputfile,peks[i]->A,me_data,ctx);
     fprintf(outputfile,"              C ");
-    for (size_t m = 0; m < SHA256_DIGEST_LENGTH; m++ ){
+    for (m = 0; m < SHA256_DIGEST_LENGTH; m++ ){
       fprintf(outputfile,"%02x", peks[i]->C[m] );
     }
     fprintf(outputfile,"\n");
