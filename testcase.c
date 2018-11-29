@@ -426,16 +426,15 @@ int main(void){
     fprintf(outputfile,"\n");
   }
 
-  start=omp_get_wtime();
-  for(i=0;i<count;i++)
-    keyword_encrypt(peks[0],keyword[0],public_key,me_data);
-  end=omp_get_wtime();
-
-  //printf("encrypt %f seconds\n",(end-start));
-  printf("encrypt ave %f seconds\n",(end-start)/count);
+  for(i=0;i<n;i++){
+    start=omp_get_wtime();
+    for(j=0;j<count;j++)
+      keyword_encrypt(peks[i],keyword[i],public_key,me_data);
+    end=omp_get_wtime();
+    printf("encrypt keyword[%d] ave %f seconds\n",i,(end-start)/count);
+    fprintf(outputfile,"encrypt keyword[%d] ave %f seconds\n",i,(end-start)/count);
+  }
   printf("------------------------------------\n");
-  //fprintf(outputfile,"encrypt %f seconds\n",(end-start));
-  fprintf(outputfile,"encrypt ave %f seconds\n",(end-start)/count);
   fprintf(outputfile,"------------------------------------\n");
 
   unsigned char word[32]="Bob";
