@@ -171,13 +171,12 @@ int main(void){
   fprintf(outputfile,"public_key ave %f seconds\n",(end-start)/count);
   fprintf(outputfile,"-------------------------------------\n");
 
-  char keyword[n][32];
+  char keyword[5][32]={"Alice","Bob","Charlie","Dave","Ellen"};
   Peks peks[n];
 
   printf("キーワード(検索タグ)を %d 個入力してください\n",n);
   for(i=0;i<n;i++){
-    printf("keyword[%d] : ",i);
-    scanf("%s",keyword[i]);
+    printf("keyword[%d] : %s\n",i,keyword[i]);
     fprintf(outputfile,"keyword[%d] : %s\n",i,keyword[i]);
 
     peks_init(peks[i],pair->g2);
@@ -211,10 +210,9 @@ int main(void){
   EC_POINT trapdoor;
   point_init(trapdoor,pair->g1);
 
-  char word[32];
+  char word[32]="Bob";
   printf("検索するキーワードを入力してください\n");
-  printf("search : ");
-  scanf("%s",word);
+  printf("search : %s\n",word);
   fprintf(outputfile,"search : %s\n",word);
 
   trapdoor_create(trapdoor,private_key,word,pair);

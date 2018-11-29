@@ -400,12 +400,11 @@ int main(void){
   fprintf(outputfile,"public_key ave %f seconds\n",(end-start)/count);
   fprintf(outputfile,"------------------------------------\n");
 
-  unsigned char keyword[n][32];
+  unsigned char keyword[5][32]={"Alice","Bob","Charlie","Dave","Ellen"};
   Peks peks[n];
   printf("キーワード(検索タグ)を %d 個入力してください\n",n);
   for(i=0;i<n;i++){//1度暗号化
-    printf("keyword[%d] : ",i);
-    scanf("%s",keyword[i]);
+    printf("keyword[%d] : %s\n",i,keyword[i]);
     fprintf(outputfile,"keyword[%d] : %s\n",i,keyword[i]);
 
     peks_init(peks[i],me_data);
@@ -439,10 +438,9 @@ int main(void){
   fprintf(outputfile,"encrypt ave %f seconds\n",(end-start)/count);
   fprintf(outputfile,"------------------------------------\n");
 
-  unsigned char word[32];
+  unsigned char word[32]="Bob";
   printf("検索するキーワードを入力してください\n");
-  printf("search : ");
-  scanf("%s",word);
+  printf("search : %s\n",word);
   fprintf(outputfile,"search : %s\n",word);
 
   trapdoor_create(trapdoor,private_key,word,me_data,ctx);
