@@ -18,6 +18,7 @@ typedef struct//Me関数のためのデータ一式
   BIGNUM *b;
   BIGNUM *p;//標数
   mpz_t p_mpz;//標数 mpz_t版
+  mpz_t p_mpz2;//(p+1)/4
   BIGNUM *order;//位数
   EC_POINT *Z;//Meスカラー倍の補助元
   int Z_sign;//補助元のsignの値
@@ -42,8 +43,8 @@ typedef struct//暗号化されたキーワード
 } Peks[1];
 
 #define mpz_mul_mod(a,b,c,p) do { mpz_mul(a,b,c); mpz_mod(a,a,p); } while(0)
-#define Me_data_init(me_data) do { me_data->ec=EC_GROUP_new_by_curve_name(714); me_data->a=BN_new(); me_data->b=BN_new(); me_data->p=BN_new(); mpz_init(me_data->p_mpz); me_data->order=BN_new(); me_data->Z=EC_POINT_new(me_data->ec); me_data->k=BN_new(); } while(0)
-#define Me_data_set(me_data) do { EC_GROUP_get_curve_GFp(me_data->ec,me_data->p,me_data->a,me_data->b,NULL); char *str; str=BN_bn2hex(me_data->p); mpz_set_str(me_data->p_mpz,str,16); free(str); EC_GROUP_get_order(me_data->ec,me_data->order,NULL); } while(0)
+#define Me_data_init(me_data) do { me_data->ec=EC_GROUP_new_by_curve_name(714); me_data->a=BN_new(); me_data->b=BN_new(); me_data->p=BN_new(); mpz_inits(me_data->p_mpz,me_data->p_mpz2,NULL); me_data->order=BN_new(); me_data->Z=EC_POINT_new(me_data->ec); me_data->k=BN_new(); } while(0)
+#define Me_data_set(me_data) do { EC_GROUP_get_curve_GFp(me_data->ec,me_data->p,me_data->a,me_data->b,NULL); char *str; str=BN_bn2hex(me_data->p); mpz_set_str(me_data->p_mpz,str,16); free(str); mpz_add_ui(me_data->p_mpz2,me_data->p_mpz,1); mpz_tdiv_q_ui(me_data->p_mpz2,me_data->p_mpz2,4); EC_GROUP_get_order(me_data->ec,me_data->order,NULL); } while(0)
 #define Me_data_set_Zk(me_data,Z,k) do { EC_POINT_copy(me_data->Z,Z); BN_copy(me_data->k,k); } while(0)
 #define Me_data_clear(me_data) do { EC_POINT_clear_free(me_data->Z); BN_clear_free(me_data->k); BN_clear_free(me_data->p); } while(0)
 #define public_key_init(pub,me_data) do { pub->P=EC_POINT_new(me_data->ec); pub->Q=EC_POINT_new(me_data->ec);} while(0)
@@ -220,9 +221,14 @@ void hash1(EC_POINT *P,const unsigned char *keyword,const Me_DATA me_data,BN_CTX
 }
 
 void hash1_mpz(EC_POINT *P,const unsigned char *keyword,const Me_DATA me_data,BN_CTX *ctx){
-  BIGNUM *x0;
+  BIGNUM **xx0,**yy0;
+  BIGNUM *x0,*y0;
   BN_CTX_start(ctx);
-  x0=BN_CTX_get(ctx);
+  x0=BN_new();
+  y0=BN_new();
+  xx0=&x0;
+  yy0=&y0;
+
   mpz_t X0,Y0;
   mpz_inits(X0,Y0,NULL);
 
@@ -241,9 +247,18 @@ void hash1_mpz(EC_POINT *P,const unsigned char *keyword,const Me_DATA me_data,BN
     mpz_add_ui(Y0,Y0,7);
   }while(mpz_kronecker(Y0,me_data->p_mpz)<1);
   //BN_mod_sqrt(y0,y0,me_data->p,ctx);
+  mpz_powm(Y0,Y0,me_data->p_mpz2,me_data->p_mpz);
+  char *str_x,*str_y;
+  mpz_get_str(str_x,16,X0);
+  mpz_get_str(str_y,16,Y0);
+  printf("%d\n",BN_hex2bn(xx0,str_x));
+  BN_hex2bn(yy0,str_y);
 
-  //EC_POINT_set_affine_coordinates_GFp(me_data->ec,P,x0,y0,ctx);
+  EC_POINT_set_affine_coordinates_GFp(me_data->ec,P,x0,y0,ctx);
+  printf("teat\n");
 
+  free(str_x);
+  free(str_y);
   BN_CTX_end(ctx);
 }
 
@@ -354,6 +369,11 @@ int main(void){
   Me_data_set_Zk(me_data,Z,k);
   me_data->Z_sign=Sign(me_data,Z,ctx);
   P=EC_GROUP_get0_generator(me_data->ec);
+
+  hash1(P,"keyword",me_data,ctx);
+  EC_POINT_print(P,me_data,ctx);
+  hash1_mpz(P,"keyword",me_data,ctx);
+  EC_POINT_print(P,me_data,ctx);
 
   printf("テスト回数：%d\n",count);
   printf("テスト単語数：%d\n",n);

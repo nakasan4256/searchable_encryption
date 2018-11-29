@@ -634,6 +634,8 @@ int main(void){
   me_data->Z_sign=Sign(me_data,Z,ctx);
   P=EC_GROUP_get0_generator(me_data->ec);
 
+  printf("p mod 8 = %d\n",BN_mod_word(me_data->p,8));
+
   private_key_create(private_key,me_data);
   //BN_set_word(private_key,100);
   printf("private_key : ");
