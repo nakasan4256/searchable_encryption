@@ -231,10 +231,16 @@ void hash1_mpz(EC_POINT *P,const unsigned char *keyword,const Me_DATA me_data,BN
 
   mpz_t X0,Y0;
   mpz_inits(X0,Y0,NULL);
+  int i;
 
 	unsigned char hash[SHA256_DIGEST_LENGTH];
+  char aa[SHA256_DIGEST_LENGTH*2+1];
 	SHA256(keyword,strlen(keyword),hash);
-  mpz_set_str(X0,hash,2);
+
+  for(i=0;i<SHA256_DIGEST_LENGTH;i++)
+    sprintf(aa+i*2,"%02x",hash[i]);
+  aa[SHA256_DIGEST_LENGTH*2]='\0';
+  mpz_set_str(X0,aa,16);
 
   do{
     //BN_add_word(x0,1);
@@ -249,13 +255,12 @@ void hash1_mpz(EC_POINT *P,const unsigned char *keyword,const Me_DATA me_data,BN
   //BN_mod_sqrt(y0,y0,me_data->p,ctx);
   mpz_powm(Y0,Y0,me_data->p_mpz2,me_data->p_mpz);
   char *str_x,*str_y;
-  mpz_get_str(str_x,16,X0);
-  mpz_get_str(str_y,16,Y0);
-  printf("%d\n",BN_hex2bn(xx0,str_x));
+  str_x=mpz_get_str(NULL,16,X0);
+  str_y=mpz_get_str(NULL,16,Y0);
+  BN_hex2bn(xx0,str_x);
   BN_hex2bn(yy0,str_y);
 
   EC_POINT_set_affine_coordinates_GFp(me_data->ec,P,x0,y0,ctx);
-  printf("teat\n");
 
   free(str_x);
   free(str_y);
@@ -264,6 +269,11 @@ void hash1_mpz(EC_POINT *P,const unsigned char *keyword,const Me_DATA me_data,BN
 
 void trapdoor_create(Trapdoor trapdoor,const BIGNUM *private_key,const char *keyword,const Me_DATA me_data,BN_CTX *ctx){
   hash1(trapdoor->H,keyword,me_data,ctx);
+  Me_mul_1(trapdoor->H,trapdoor->H,private_key,me_data);
+}
+
+void trapdoor_create_mpz(Trapdoor trapdoor,const BIGNUM *private_key,const char *keyword,const Me_DATA me_data,BN_CTX *ctx){
+  hash1_mpz(trapdoor->H,keyword,me_data,ctx);
   Me_mul_1(trapdoor->H,trapdoor->H,private_key,me_data);
 }
 
@@ -282,6 +292,39 @@ void keyword_encrypt(Peks peks,const unsigned char *keyword,const Public_Key pub
 
   Me_mul_1(peks->A,public_key->P,r,me_data);
   hash1(C1,keyword,me_data,ctx);
+  EC_POINT_copy(C2,public_key->P);
+  EC_POINT_invert(me_data->ec,C2,ctx);
+  EC_POINT_add(me_data->ec,C1,C1,C2,ctx);
+  EC_POINT_add(me_data->ec,C1,C1,public_key->Q,ctx);
+  EC_POINT_add(me_data->ec,C1,C1,peks->A,ctx);
+
+  EC_POINT_get_affine_coordinates_GFp(me_data->ec,C1,r,NULL,ctx);
+  a = (unsigned char *)malloc(BN_num_bytes(r));
+  a = BN_bn2hex(r);
+  SHA256(a,strlen(a),peks->C);
+
+  free(a);
+  EC_POINT_clear_free(C1);
+  EC_POINT_clear_free(C2);
+  BN_clear_free(r);
+  BN_CTX_free(ctx);
+}
+
+void keyword_encrypt_mpz(Peks peks,const unsigned char *keyword,const Public_Key public_key,const Me_DATA me_data){
+  BN_CTX *ctx;
+  ctx=BN_CTX_secure_new();
+  BIGNUM *r;
+  r=BN_new();
+  EC_POINT *C1;
+  EC_POINT *C2;
+  C1=EC_POINT_new(me_data->ec);
+  C2=EC_POINT_new(me_data->ec);
+  unsigned char *a=NULL;
+
+  BN_rand_range(r,me_data->order);
+
+  Me_mul_1(peks->A,public_key->P,r,me_data);
+  hash1_mpz(C1,keyword,me_data,ctx);
   EC_POINT_copy(C2,public_key->P);
   EC_POINT_invert(me_data->ec,C2,ctx);
   EC_POINT_add(me_data->ec,C1,C1,C2,ctx);
@@ -326,7 +369,7 @@ int test(const Peks peks,const Trapdoor trapdoor,const Me_DATA me_data){
 
 int main(void){
   int i,j,n=5;//テスト用キーワードの個数
-  int count=100000;//テスト実行回数
+  int count=10000;//テスト実行回数
   FILE *outputfile;
   outputfile = fopen("d.txt", "w");
   if (outputfile == NULL) {
@@ -454,6 +497,16 @@ int main(void){
     printf("encrypt keyword[%d] ave %f seconds\n",i,(end-start)/count);
     fprintf(outputfile,"encrypt keyword[%d] ave %f seconds\n",i,(end-start)/count);
   }
+
+  for(i=0;i<n;i++){
+    start=omp_get_wtime();
+    for(j=0;j<count;j++)
+      keyword_encrypt_mpz(peks[i],keyword[i],public_key,me_data);
+    end=omp_get_wtime();
+    printf("encrypt keyword[%d] mpz %f seconds\n",i,(end-start)/count);
+    fprintf(outputfile,"encrypt keyword[%d] mpz %f seconds\n",i,(end-start)/count);
+  }
+
   printf("------------------------------------\n");
   fprintf(outputfile,"------------------------------------\n");
 
@@ -474,11 +527,19 @@ int main(void){
     trapdoor_create(trapdoor,private_key,word,me_data,ctx);
   end=omp_get_wtime();
 
-  //printf("trapdoor %f seconds\n",(end-start));
   printf("trapdoor ave %f seconds\n",(end-start)/count);
-  printf("------------------------------------\n");
-  //fprintf(outputfile,"trapdoor %f seconds\n",(end-start));
   fprintf(outputfile,"trapdoor ave %f seconds\n",(end-start)/count);
+  printf("------------------------------------\n");
+  fprintf(outputfile,"------------------------------------\n");
+
+  start=omp_get_wtime();
+  for(i=0;i<count;i++)
+    trapdoor_create_mpz(trapdoor,private_key,word,me_data,ctx);
+  end=omp_get_wtime();
+
+  printf("trapdoor mpz %f seconds\n",(end-start)/count);
+  fprintf(outputfile,"trapdoor mpz %f seconds\n",(end-start)/count);
+  printf("------------------------------------\n");
   fprintf(outputfile,"------------------------------------\n");
 
   for(i=0;i<n;i++){
